@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package api.user.v1;
+
+import "google/api/annotations.proto";
+
+option go_package = "cardbinance/api/user/v1;v1";
+option java_multiple_files = true;
+option java_package = "api.user.v1";
+
+service User {
+	rpc EthAuthorize (EthAuthorizeRequest) returns (EthAuthorizeReply) {
+		option (google.api.http) = {
+			post: "/api/app_server/eth_authorize"
+			body: "send_body"
+		};
+	};
+
+	rpc GetUser (GetUserRequest) returns (GetUserReply) {
+		option (google.api.http) = {
+			get: "/api/app_server/user"
+		};
+	};
+}
+
+message EthAuthorizeRequest {
+	message SendBody{
+		string address = 1;
+		string code = 2;
+		string sign = 4;
+		string publicKey = 5;
+	}
+
+	SendBody send_body = 1;
+}
+
+message EthAuthorizeReply {
+	string status = 1;
+	string token = 2;
+}
+
+message GetUserRequest {}
+
+message GetUserReply {
+	string status = 1;
+	string address = 2;
+}
