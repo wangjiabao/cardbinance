@@ -1,11 +1,19 @@
 package biz
 
 import (
+	"bytes"
 	pb "cardbinance/api/user/v1"
 	"context"
+	"crypto/md5"
+	"crypto/rand"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"github.com/go-kratos/kratos/v2/errors"
 	"github.com/go-kratos/kratos/v2/log"
+	"io/ioutil"
+	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -373,4 +381,134 @@ func (uuc *UserUseCase) SetVip(ctx context.Context, req *pb.SetVipRequest, userI
 	return &pb.SetVipReply{
 		Status: "ok",
 	}, nil
+}
+
+type CardSpendRule struct {
+	DailyLimit   float64 `json:"dailyLimit"`
+	MonthlyLimit float64 `json:"monthlyLimit"`
+}
+
+type CardRiskControl struct {
+	AllowedMerchants []string `json:"allowedMerchants"`
+	BlockedCountries []string `json:"blockedCountries"`
+}
+
+type CreateCardRequest struct {
+	MerchantID      string          `json:"merchantId"`
+	CardCurrency    string          `json:"cardCurrency"`
+	CardAmount      float64         `json:"cardAmount"`
+	CardholderID    int64           `json:"cardholderId"`
+	CardProductID   int64           `json:"cardProductId"`
+	CardSpendRule   CardSpendRule   `json:"cardSpendRule"`
+	CardRiskControl CardRiskControl `json:"cardRiskControl"`
+	Sign            string          `json:"sign"`
+}
+
+type CreateCardResponse struct {
+	CardID      string `json:"cardId"`
+	CardOrderID string `json:"cardOrderId"`
+	CreateTime  string `json:"createTime"`
+	CardStatus  string `json:"cardStatus"`
+	OrderStatus string `json:"orderStatus"`
+}
+
+// GenerateSign 生成签名
+func GenerateSign(params map[string]string, signKey string) string {
+	// 1. 排除 sign 字段
+	delete(params, "sign")
+
+	// 2. 获取字段名并排序
+	keys := make([]string, 0, len(params))
+	for k := range params {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	// 3. 拼接成 key=value 格式并合并
+	var sb strings.Builder
+	for _, k := range keys {
+		sb.WriteString(k)
+		sb.WriteString("=")
+		sb.WriteString(params[k])
+	}
+
+	// 4. 拼接 signKey
+	finalStr := signKey + sb.String()
+
+	// 5. MD5 加密
+	hash := md5.Sum([]byte(finalStr))
+	return hex.EncodeToString(hash[:])
+}
+
+func CreateCardRequestWithSign() (*CreateCardResponse, error) {
+	url := "https://test-api.ispay.com/dev-api/vcc/api/v1/cards/create"
+
+	timestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
+	nonce, err := GenerateNonce(8)
+	if err != nil {
+		return nil, fmt.Errorf("生成 nonce 失败: %w", err)
+	}
+
+	// 签名字段（仅顶层参与）
+	params := map[string]string{
+		"merchantId":    "MERCHANT_001",
+		"cardCurrency":  "USD",
+		"cardAmount":    "1000",
+		"cardholderId":  "10001",
+		"cardProductId": "20001",
+		"timestamp":     timestamp,
+		"nonce":         nonce,
+	}
+	sign := GenerateSign(params, "j4gqNRcpTDJr50AP2xd9obKWZIKWbeo9")
+
+	// 请求体（包括嵌套结构）
+	reqBody := map[string]interface{}{
+		"merchantId":    "MERCHANT_001",
+		"cardCurrency":  "USD",
+		"cardAmount":    1000,
+		"cardholderId":  10001,
+		"cardProductId": 20001,
+		"timestamp":     timestamp,
+		"nonce":         nonce,
+		"cardSpendRule": map[string]interface{}{
+			"dailyLimit":   500,
+			"monthlyLimit": 10000,
+		},
+		"cardRiskControl": map[string]interface{}{
+			"allowedMerchants": []string{"ONLINE"},
+			"blockedCountries": []string{},
+		},
+		"sign": sign,
+	}
+
+	jsonData, _ := json.Marshal(reqBody)
+	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, _ := ioutil.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, body)
+	}
+
+	var result CreateCardResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("decode error: %w", err)
+	}
+
+	return &result, nil
+}
+
+func GenerateNonce(n int) (string, error) {
+	bytes := make([]byte, n)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(bytes), nil
 }

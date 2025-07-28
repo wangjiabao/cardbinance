@@ -145,7 +145,7 @@ func (u *UserService) GetUser(ctx context.Context, req *pb.GetUserRequest) (*pb.
 			}, nil
 		}
 
-		userId = c["UserId"].(uint64)
+		userId = uint64(c["UserId"].(float64))
 	}
 
 	return u.uuc.GetUserById(userId)
@@ -166,7 +166,7 @@ func (u *UserService) OrderList(ctx context.Context, req *pb.OrderListRequest) (
 			}, nil
 		}
 
-		userId = c["UserId"].(uint64)
+		userId = uint64(c["UserId"].(float64))
 	}
 
 	return u.uuc.OrderList(ctx, req, userId)
@@ -183,7 +183,7 @@ func (u *UserService) RewardList(ctx context.Context, req *pb.RewardListRequest)
 			}, nil
 		}
 
-		userId = c["UserId"].(uint64)
+		userId = uint64(c["UserId"].(float64))
 	}
 
 	return u.uuc.RewardList(ctx, req, userId)
@@ -204,7 +204,7 @@ func (u *UserService) OpenCard(ctx context.Context, req *pb.OpenCardRequest) (*p
 			}, nil
 		}
 
-		userId = c["UserId"].(uint64)
+		userId = uint64(c["UserId"].(float64))
 	}
 
 	var (
@@ -257,7 +257,7 @@ func (u *UserService) AmountToCard(ctx context.Context, req *pb.AmountToCardRequ
 			}, nil
 		}
 
-		userId = c["UserId"].(uint64)
+		userId = uint64(c["UserId"].(float64))
 	}
 
 	var (
@@ -310,7 +310,7 @@ func (u *UserService) SetVip(ctx context.Context, req *pb.SetVipRequest) (*pb.Se
 			}, nil
 		}
 
-		userId = c["UserId"].(uint64)
+		userId = uint64(c["UserId"].(float64))
 	}
 
 	var (
@@ -363,7 +363,7 @@ func (u *UserService) AmountTo(ctx context.Context, req *pb.AmountToRequest) (*p
 			}, nil
 		}
 
-		userId = c["UserId"].(uint64)
+		userId = uint64(c["UserId"].(float64))
 	}
 
 	var (
@@ -416,7 +416,7 @@ func (u *UserService) Withdraw(ctx context.Context, req *pb.WithdrawRequest) (*p
 			}, nil
 		}
 
-		userId = c["UserId"].(uint64)
+		userId = uint64(c["UserId"].(float64))
 	}
 
 	var (
