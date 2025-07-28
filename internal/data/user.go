@@ -35,12 +35,23 @@ type UserRecommend struct {
 }
 
 type Config struct {
-	ID        int64     `gorm:"primarykey;type:int"`
+	ID        uint64    `gorm:"primarykey;type:int"`
 	Name      string    `gorm:"type:varchar(45);not null"`
 	KeyName   string    `gorm:"type:varchar(45);not null"`
 	Value     string    `gorm:"type:varchar(1000);not null"`
 	CreatedAt time.Time `gorm:"type:datetime;not null"`
 	UpdatedAt time.Time `gorm:"type:datetime;not null"`
+}
+
+type Reward struct {
+	ID        uint64    `gorm:"primarykey;type:int"`
+	UserId    uint64    `gorm:"type:int;not null"`
+	Amount    float64   `gorm:"type:decimal(65,20);not null"`
+	Reason    uint64    `gorm:"type:int;not null"`
+	CreatedAt time.Time `gorm:"type:datetime;not null"`
+	UpdatedAt time.Time `gorm:"type:datetime;not null"`
+	Address   string    `gorm:"type:varchar(100);not null"`
+	One       uint64    `gorm:"type:int;not null"`
 }
 
 type UserRepo struct {
@@ -130,6 +141,9 @@ func (u *UserRepo) GetUserRecommendByUserId(userId uint64) (*biz.UserRecommend, 
 func (u *UserRepo) CreateUser(ctx context.Context, uc *biz.User) (*biz.User, error) {
 	var user User
 	user.Address = uc.Address
+	user.Card = "no"
+	user.CardNumber = "no"
+	user.CardOrderId = "no"
 	if 0 < uc.Vip {
 		user.Vip = uc.Vip
 	}
@@ -265,4 +279,30 @@ func (u *UserRepo) GetConfigByKeys(keys ...string) ([]*biz.Config, error) {
 	}
 
 	return res, nil
+}
+
+// CreateCard .
+func (u *UserRepo) CreateCard(ctx context.Context, userId uint64, amount float64) error {
+	res := u.data.DB(ctx).Table("user").Where("id=?", userId).Where("amount>=?", amount).Where("card_number=?", "no").
+		Updates(map[string]interface{}{
+			"amount":     gorm.Expr("amount - ?", amount),
+			"updated_at": time.Now().Format("2006-01-02 15:04:05"),
+		})
+	if res.Error != nil || 0 >= res.RowsAffected {
+		return errors.New(500, "UPDATE_USER_ERROR", "用户信息修改失败")
+	}
+
+	var (
+		reward Reward
+	)
+
+	reward.UserId = userId
+	reward.Amount = amount
+	reward.Reason = 3 // 给我分红的理由
+	resInsert := u.data.DB(ctx).Table("reward").Create(&reward)
+	if resInsert.Error != nil || 0 >= resInsert.RowsAffected {
+		return errors.New(500, "CREATE_LOCATION_ERROR", "信息创建失败")
+	}
+
+	return nil
 }

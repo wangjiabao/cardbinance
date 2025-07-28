@@ -45,7 +45,7 @@ type UserRecommend struct {
 }
 
 type Config struct {
-	ID      int64
+	ID      uint64
 	KeyName string
 	Name    string
 	Value   string
@@ -60,6 +60,7 @@ type UserRepo interface {
 	CreateUserRecommend(ctx context.Context, userId uint64, recommendUser *UserRecommend) (*UserRecommend, error)
 	GetUserRecommendByCode(code string) ([]*UserRecommend, error)
 	GetUserByUserIds(userIds []uint64) (map[uint64]*User, error)
+	CreateCard(ctx context.Context, userId uint64, amount float64) error
 }
 
 type UserUseCase struct {
@@ -344,6 +345,32 @@ func (uuc *UserUseCase) OpenCard(ctx context.Context, req *pb.OpenCardRequest, u
 		return &pb.OpenCardReply{Status: "已经提交开卡信息"}, nil
 	}
 
+	if 10 > user.Amount {
+		return &pb.OpenCardReply{Status: "账号余额不足"}, nil
+	}
+
+	if err = uuc.tx.ExecTx(ctx, func(ctx context.Context) error { // 事务
+		err = uuc.repo.CreateCard(ctx, userId, 10)
+		if nil != err {
+			return err
+		}
+
+		return nil
+	}); nil != err {
+		fmt.Println(err, "开卡写入mysql错误", user)
+		return &pb.OpenCardReply{
+			Status: "开卡错误，联系管理员",
+		}, nil
+	}
+
+	var (
+		resCreatCard *CreateCardResponse
+	)
+	resCreatCard, err = CreateCardRequestWithSign(10)
+	if nil == resCreatCard || err != nil {
+		return &pb.OpenCardReply{Status: "开卡订单创建失败，联系管理员"}, nil
+	}
+
 	return &pb.OpenCardReply{
 		Status: "ok",
 	}, nil
@@ -440,8 +467,17 @@ func GenerateSign(params map[string]string, signKey string) string {
 	return hex.EncodeToString(hash[:])
 }
 
-func CreateCardRequestWithSign() (*CreateCardResponse, error) {
-	url := "https://test-api.ispay.com/dev-api/vcc/api/v1/cards/create"
+func GenerateNonce(n int) (string, error) {
+	bytes := make([]byte, n)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(bytes), nil
+}
+
+func CreateCardRequestWithSign(cardAmount uint64) (*CreateCardResponse, error) {
+	//url := "https://test-api.ispay.com/dev-api/vcc/api/v1/cards/create"
+	url := "http://120.79.173.55:9102/prod-api/vcc/api/v1/cards/create"
 
 	timestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
 	nonce, err := GenerateNonce(8)
@@ -451,21 +487,22 @@ func CreateCardRequestWithSign() (*CreateCardResponse, error) {
 
 	// 签名字段（仅顶层参与）
 	params := map[string]string{
-		"merchantId":    "MERCHANT_001",
+		"merchantId":    "322338",
 		"cardCurrency":  "USD",
-		"cardAmount":    "1000",
+		"cardAmount":    strconv.FormatUint(cardAmount, 10),
 		"cardholderId":  "10001",
 		"cardProductId": "20001",
 		"timestamp":     timestamp,
 		"nonce":         nonce,
 	}
+
 	sign := GenerateSign(params, "j4gqNRcpTDJr50AP2xd9obKWZIKWbeo9")
 
 	// 请求体（包括嵌套结构）
 	reqBody := map[string]interface{}{
-		"merchantId":    "MERCHANT_001",
+		"merchantId":    "322338",
 		"cardCurrency":  "USD",
-		"cardAmount":    1000,
+		"cardAmount":    cardAmount,
 		"cardholderId":  10001,
 		"cardProductId": 20001,
 		"timestamp":     timestamp,
@@ -485,30 +522,27 @@ func CreateCardRequestWithSign() (*CreateCardResponse, error) {
 	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 	req.Header.Set("Content-Type", "application/json")
 
+	//fmt.Println("请求报文:", string(jsonData))
+
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("request failed: %w", err)
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	body, _ := ioutil.ReadAll(resp.Body)
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, body)
+		return nil, err
 	}
 
+	//fmt.Println("响应状态码:", resp.StatusCode)
+	//fmt.Println("响应报文:", string(body)) // ← 打印响应内容
+
 	var result CreateCardResponse
-	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, fmt.Errorf("decode error: %w", err)
+	if err = json.Unmarshal(body, &result); err != nil {
+		return nil, err
 	}
 
 	return &result, nil
-}
-
-func GenerateNonce(n int) (string, error) {
-	bytes := make([]byte, n)
-	if _, err := rand.Read(bytes); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(bytes), nil
 }
