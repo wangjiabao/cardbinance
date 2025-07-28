@@ -48,7 +48,7 @@ func NewHTTPServer(c *conf.Server, userService *service.UserService, logger log.
 // NewWhiteListMatcher 设置白名单，不需要 token 验证的接口
 func NewWhiteListMatcher() selector.MatchFunc {
 	whiteList := make(map[string]struct{})
-	//whiteList["/api.App/EthAuthorize"] = struct{}{}
+	whiteList["/api.App/EthAuthorize"] = struct{}{}
 	return func(ctx context.Context, operation string) bool {
 		if _, ok := whiteList[operation]; ok {
 			return false

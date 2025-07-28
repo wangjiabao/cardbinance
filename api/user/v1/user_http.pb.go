@@ -19,18 +19,51 @@ var _ = binding.EncodeURL
 
 const _ = http.SupportPackageIsVersion1
 
+const OperationUserAmountTo = "/api.user.v1.User/AmountTo"
+const OperationUserAmountToCard = "/api.user.v1.User/AmountToCard"
 const OperationUserEthAuthorize = "/api.user.v1.User/EthAuthorize"
 const OperationUserGetUser = "/api.user.v1.User/GetUser"
+const OperationUserOpenCard = "/api.user.v1.User/OpenCard"
+const OperationUserOrderList = "/api.user.v1.User/OrderList"
+const OperationUserRewardList = "/api.user.v1.User/RewardList"
+const OperationUserSetVip = "/api.user.v1.User/SetVip"
+const OperationUserUserRecommend = "/api.user.v1.User/UserRecommend"
+const OperationUserWithdraw = "/api.user.v1.User/Withdraw"
 
 type UserHTTPServer interface {
+	// AmountTo 转账
+	AmountTo(context.Context, *AmountToRequest) (*AmountToReply, error)
+	// AmountToCard 划转
+	AmountToCard(context.Context, *AmountToCardRequest) (*AmountToCardReply, error)
 	EthAuthorize(context.Context, *EthAuthorizeRequest) (*EthAuthorizeReply, error)
+	// GetUser 个人信息
 	GetUser(context.Context, *GetUserRequest) (*GetUserReply, error)
+	// OpenCard 开卡
+	OpenCard(context.Context, *OpenCardRequest) (*OpenCardReply, error)
+	// OrderList 账单列表
+	OrderList(context.Context, *OrderListRequest) (*OrderListReply, error)
+	// RewardList 明细列表
+	RewardList(context.Context, *RewardListRequest) (*RewardListReply, error)
+	// SetVip 设置级别给下级
+	SetVip(context.Context, *SetVipRequest) (*SetVipReply, error)
+	// UserRecommend 团队信息
+	UserRecommend(context.Context, *RecommendListRequest) (*RecommendListReply, error)
+	// Withdraw 提现
+	Withdraw(context.Context, *WithdrawRequest) (*WithdrawReply, error)
 }
 
 func RegisterUserHTTPServer(s *http.Server, srv UserHTTPServer) {
 	r := s.Route("/")
 	r.POST("/api/app_server/eth_authorize", _User_EthAuthorize0_HTTP_Handler(srv))
 	r.GET("/api/app_server/user", _User_GetUser0_HTTP_Handler(srv))
+	r.GET("/api/app_server/recommend_list", _User_UserRecommend0_HTTP_Handler(srv))
+	r.GET("/api/app_server/order_list", _User_OrderList0_HTTP_Handler(srv))
+	r.GET("/api/app_server/reward_list", _User_RewardList0_HTTP_Handler(srv))
+	r.POST("/api/app_server/open_card", _User_OpenCard0_HTTP_Handler(srv))
+	r.POST("/api/app_server/amount_to_card", _User_AmountToCard0_HTTP_Handler(srv))
+	r.POST("/api/app_server/set_vip", _User_SetVip0_HTTP_Handler(srv))
+	r.POST("/api/app_server/amount_to", _User_AmountTo0_HTTP_Handler(srv))
+	r.POST("/api/app_server/withdraw", _User_Withdraw0_HTTP_Handler(srv))
 }
 
 func _User_EthAuthorize0_HTTP_Handler(srv UserHTTPServer) func(ctx http.Context) error {
@@ -74,9 +107,184 @@ func _User_GetUser0_HTTP_Handler(srv UserHTTPServer) func(ctx http.Context) erro
 	}
 }
 
+func _User_UserRecommend0_HTTP_Handler(srv UserHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in RecommendListRequest
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationUserUserRecommend)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.UserRecommend(ctx, req.(*RecommendListRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*RecommendListReply)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _User_OrderList0_HTTP_Handler(srv UserHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in OrderListRequest
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationUserOrderList)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.OrderList(ctx, req.(*OrderListRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*OrderListReply)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _User_RewardList0_HTTP_Handler(srv UserHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in RewardListRequest
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationUserRewardList)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.RewardList(ctx, req.(*RewardListRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*RewardListReply)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _User_OpenCard0_HTTP_Handler(srv UserHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in OpenCardRequest
+		if err := ctx.Bind(&in.SendBody); err != nil {
+			return err
+		}
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationUserOpenCard)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.OpenCard(ctx, req.(*OpenCardRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*OpenCardReply)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _User_AmountToCard0_HTTP_Handler(srv UserHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in AmountToCardRequest
+		if err := ctx.Bind(&in.SendBody); err != nil {
+			return err
+		}
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationUserAmountToCard)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.AmountToCard(ctx, req.(*AmountToCardRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*AmountToCardReply)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _User_SetVip0_HTTP_Handler(srv UserHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in SetVipRequest
+		if err := ctx.Bind(&in.SendBody); err != nil {
+			return err
+		}
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationUserSetVip)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.SetVip(ctx, req.(*SetVipRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*SetVipReply)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _User_AmountTo0_HTTP_Handler(srv UserHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in AmountToRequest
+		if err := ctx.Bind(&in.SendBody); err != nil {
+			return err
+		}
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationUserAmountTo)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.AmountTo(ctx, req.(*AmountToRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*AmountToReply)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _User_Withdraw0_HTTP_Handler(srv UserHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in WithdrawRequest
+		if err := ctx.Bind(&in.SendBody); err != nil {
+			return err
+		}
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationUserWithdraw)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.Withdraw(ctx, req.(*WithdrawRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*WithdrawReply)
+		return ctx.Result(200, reply)
+	}
+}
+
 type UserHTTPClient interface {
+	AmountTo(ctx context.Context, req *AmountToRequest, opts ...http.CallOption) (rsp *AmountToReply, err error)
+	AmountToCard(ctx context.Context, req *AmountToCardRequest, opts ...http.CallOption) (rsp *AmountToCardReply, err error)
 	EthAuthorize(ctx context.Context, req *EthAuthorizeRequest, opts ...http.CallOption) (rsp *EthAuthorizeReply, err error)
 	GetUser(ctx context.Context, req *GetUserRequest, opts ...http.CallOption) (rsp *GetUserReply, err error)
+	OpenCard(ctx context.Context, req *OpenCardRequest, opts ...http.CallOption) (rsp *OpenCardReply, err error)
+	OrderList(ctx context.Context, req *OrderListRequest, opts ...http.CallOption) (rsp *OrderListReply, err error)
+	RewardList(ctx context.Context, req *RewardListRequest, opts ...http.CallOption) (rsp *RewardListReply, err error)
+	SetVip(ctx context.Context, req *SetVipRequest, opts ...http.CallOption) (rsp *SetVipReply, err error)
+	UserRecommend(ctx context.Context, req *RecommendListRequest, opts ...http.CallOption) (rsp *RecommendListReply, err error)
+	Withdraw(ctx context.Context, req *WithdrawRequest, opts ...http.CallOption) (rsp *WithdrawReply, err error)
 }
 
 type UserHTTPClientImpl struct {
@@ -85,6 +293,32 @@ type UserHTTPClientImpl struct {
 
 func NewUserHTTPClient(client *http.Client) UserHTTPClient {
 	return &UserHTTPClientImpl{client}
+}
+
+func (c *UserHTTPClientImpl) AmountTo(ctx context.Context, in *AmountToRequest, opts ...http.CallOption) (*AmountToReply, error) {
+	var out AmountToReply
+	pattern := "/api/app_server/amount_to"
+	path := binding.EncodeURL(pattern, in, false)
+	opts = append(opts, http.Operation(OperationUserAmountTo))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "POST", path, in.SendBody, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, err
+}
+
+func (c *UserHTTPClientImpl) AmountToCard(ctx context.Context, in *AmountToCardRequest, opts ...http.CallOption) (*AmountToCardReply, error) {
+	var out AmountToCardReply
+	pattern := "/api/app_server/amount_to_card"
+	path := binding.EncodeURL(pattern, in, false)
+	opts = append(opts, http.Operation(OperationUserAmountToCard))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "POST", path, in.SendBody, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, err
 }
 
 func (c *UserHTTPClientImpl) EthAuthorize(ctx context.Context, in *EthAuthorizeRequest, opts ...http.CallOption) (*EthAuthorizeReply, error) {
@@ -107,6 +341,84 @@ func (c *UserHTTPClientImpl) GetUser(ctx context.Context, in *GetUserRequest, op
 	opts = append(opts, http.Operation(OperationUserGetUser))
 	opts = append(opts, http.PathTemplate(pattern))
 	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, err
+}
+
+func (c *UserHTTPClientImpl) OpenCard(ctx context.Context, in *OpenCardRequest, opts ...http.CallOption) (*OpenCardReply, error) {
+	var out OpenCardReply
+	pattern := "/api/app_server/open_card"
+	path := binding.EncodeURL(pattern, in, false)
+	opts = append(opts, http.Operation(OperationUserOpenCard))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "POST", path, in.SendBody, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, err
+}
+
+func (c *UserHTTPClientImpl) OrderList(ctx context.Context, in *OrderListRequest, opts ...http.CallOption) (*OrderListReply, error) {
+	var out OrderListReply
+	pattern := "/api/app_server/order_list"
+	path := binding.EncodeURL(pattern, in, true)
+	opts = append(opts, http.Operation(OperationUserOrderList))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, err
+}
+
+func (c *UserHTTPClientImpl) RewardList(ctx context.Context, in *RewardListRequest, opts ...http.CallOption) (*RewardListReply, error) {
+	var out RewardListReply
+	pattern := "/api/app_server/reward_list"
+	path := binding.EncodeURL(pattern, in, true)
+	opts = append(opts, http.Operation(OperationUserRewardList))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, err
+}
+
+func (c *UserHTTPClientImpl) SetVip(ctx context.Context, in *SetVipRequest, opts ...http.CallOption) (*SetVipReply, error) {
+	var out SetVipReply
+	pattern := "/api/app_server/set_vip"
+	path := binding.EncodeURL(pattern, in, false)
+	opts = append(opts, http.Operation(OperationUserSetVip))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "POST", path, in.SendBody, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, err
+}
+
+func (c *UserHTTPClientImpl) UserRecommend(ctx context.Context, in *RecommendListRequest, opts ...http.CallOption) (*RecommendListReply, error) {
+	var out RecommendListReply
+	pattern := "/api/app_server/recommend_list"
+	path := binding.EncodeURL(pattern, in, true)
+	opts = append(opts, http.Operation(OperationUserUserRecommend))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, err
+}
+
+func (c *UserHTTPClientImpl) Withdraw(ctx context.Context, in *WithdrawRequest, opts ...http.CallOption) (*WithdrawReply, error) {
+	var out WithdrawReply
+	pattern := "/api/app_server/withdraw"
+	path := binding.EncodeURL(pattern, in, false)
+	opts = append(opts, http.Operation(OperationUserWithdraw))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "POST", path, in.SendBody, &out, opts...)
 	if err != nil {
 		return nil, err
 	}

@@ -6,6 +6,56 @@ info:
     title: User API
     version: 0.0.1
 paths:
+    /api/app_server/amount_to:
+        post:
+            tags:
+                - User
+            description: 转账
+            operationId: User_AmountTo
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/AmountToRequest_SendBody'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/AmountToReply'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/app_server/amount_to_card:
+        post:
+            tags:
+                - User
+            description: 划转
+            operationId: User_AmountToCard
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/AmountToCardRequest_SendBody'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/AmountToCardReply'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /api/app_server/eth_authorize:
         post:
             tags:
@@ -30,10 +80,137 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /api/app_server/open_card:
+        post:
+            tags:
+                - User
+            description: 开卡
+            operationId: User_OpenCard
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/OpenCardRequest_SendBody'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/OpenCardReply'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/app_server/order_list:
+        get:
+            tags:
+                - User
+            description: 账单列表
+            operationId: User_OrderList
+            parameters:
+                - name: page
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/OrderListReply'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/app_server/recommend_list:
+        get:
+            tags:
+                - User
+            description: 团队信息
+            operationId: User_UserRecommend
+            parameters:
+                - name: address
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/RecommendListReply'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/app_server/reward_list:
+        get:
+            tags:
+                - User
+            description: 明细列表
+            operationId: User_RewardList
+            parameters:
+                - name: page
+                  in: query
+                  schema:
+                    type: string
+                - name: reqType
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/RewardListReply'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/app_server/set_vip:
+        post:
+            tags:
+                - User
+            description: 设置级别给下级
+            operationId: User_SetVip
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/SetVipRequest_SendBody'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/SetVipReply'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /api/app_server/user:
         get:
             tags:
                 - User
+            description: 个人信息
             operationId: User_GetUser
             responses:
                 "200":
@@ -48,8 +225,59 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /api/app_server/withdraw:
+        post:
+            tags:
+                - User
+            description: 提现
+            operationId: User_Withdraw
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/WithdrawRequest_SendBody'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/WithdrawReply'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
 components:
     schemas:
+        AmountToCardReply:
+            type: object
+            properties:
+                status:
+                    type: string
+        AmountToCardRequest_SendBody:
+            type: object
+            properties:
+                sign:
+                    type: string
+                amount:
+                    type: string
+        AmountToReply:
+            type: object
+            properties:
+                status:
+                    type: string
+        AmountToRequest_SendBody:
+            type: object
+            properties:
+                sign:
+                    type: string
+                amount:
+                    type: string
+                address:
+                    type: string
         EthAuthorizeReply:
             type: object
             properties:
@@ -75,6 +303,18 @@ components:
                     type: string
                 address:
                     type: string
+                amount:
+                    type: string
+                myTotalAmount:
+                    type: string
+                vip:
+                    type: string
+                cardNum:
+                    type: string
+                cardAmount:
+                    type: string
+                recommendAddress:
+                    type: string
         GoogleProtobufAny:
             type: object
             properties:
@@ -83,6 +323,100 @@ components:
                     description: The type of the serialized message.
             additionalProperties: true
             description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message.
+        OpenCardReply:
+            type: object
+            properties:
+                status:
+                    type: string
+        OpenCardRequest_SendBody:
+            type: object
+            properties:
+                sign:
+                    type: string
+        OrderListReply:
+            type: object
+            properties:
+                status:
+                    type: string
+                count:
+                    type: string
+                list:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/OrderListReply_List'
+        OrderListReply_List:
+            type: object
+            properties:
+                timestamp:
+                    type: string
+                status:
+                    type: string
+                tradeAmount:
+                    type: string
+                actualTransactionAmount:
+                    type: string
+                serviceFee:
+                    type: string
+                channelFee:
+                    type: string
+                tradeDescription:
+                    type: string
+                currentBalance:
+                    type: string
+        RecommendListReply:
+            type: object
+            properties:
+                status:
+                    type: string
+                recommends:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/RecommendListReply_List'
+        RecommendListReply_List:
+            type: object
+            properties:
+                address:
+                    type: string
+                amount:
+                    type: string
+                vip:
+                    type: string
+                cardOpen:
+                    type: string
+        RewardListReply:
+            type: object
+            properties:
+                status:
+                    type: string
+                count:
+                    type: string
+                list:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/RewardListReply_List'
+        RewardListReply_List:
+            type: object
+            properties:
+                createdAt:
+                    type: string
+                amount:
+                    type: string
+                address:
+                    type: string
+        SetVipReply:
+            type: object
+            properties:
+                status:
+                    type: string
+        SetVipRequest_SendBody:
+            type: object
+            properties:
+                sign:
+                    type: string
+                address:
+                    type: string
+                vip:
+                    type: string
         Status:
             type: object
             properties:
@@ -99,5 +433,17 @@ components:
                         $ref: '#/components/schemas/GoogleProtobufAny'
                     description: A list of messages that carry the error details.  There is a common set of message types for APIs to use.
             description: 'The `Status` type defines a logical error model that is suitable for different programming environments, including REST APIs and RPC APIs. It is used by [gRPC](https://github.com/grpc). Each `Status` message contains three pieces of data: error code, error message, and error details. You can find out more about this error model and how to work with it in the [API Design Guide](https://cloud.google.com/apis/design/errors).'
+        WithdrawReply:
+            type: object
+            properties:
+                status:
+                    type: string
+        WithdrawRequest_SendBody:
+            type: object
+            properties:
+                sign:
+                    type: string
+                amount:
+                    type: string
 tags:
     - name: User

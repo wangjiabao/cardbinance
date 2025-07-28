@@ -7,10 +7,14 @@ import (
 	"cardbinance/internal/pkg/middleware/auth"
 	"context"
 	"github.com/ethereum/go-ethereum/accounts"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/go-kratos/kratos/v2/log"
+	"github.com/go-kratos/kratos/v2/middleware/auth/jwt"
 	jwt2 "github.com/golang-jwt/jwt/v5"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -54,19 +58,19 @@ func (u *UserService) EthAuthorize(ctx context.Context, req *pb.EthAuthorizeRequ
 		msg  string
 	)
 
-	//res, err = addressCheck(userAddress)
-	//if nil != err {
-	//	return &v1.EthAuthorizeReply{
-	//		Token:  "",
-	//		Status: "地址验证失败",
-	//	}, nil
-	//}
-	//if !res {
-	//	return &v1.EthAuthorizeReply{
-	//		Token:  "",
-	//		Status: "地址格式错误",
-	//	}, nil
-	//}
+	res, err = addressCheck(userAddress)
+	if nil != err {
+		return &pb.EthAuthorizeReply{
+			Token:  "",
+			Status: "地址验证失败",
+		}, nil
+	}
+	if !res {
+		return &pb.EthAuthorizeReply{
+			Token:  "",
+			Status: "地址格式错误",
+		}, nil
+	}
 
 	var (
 		addressFromSign string
@@ -85,7 +89,7 @@ func (u *UserService) EthAuthorize(ctx context.Context, req *pb.EthAuthorizeRequ
 	user, err, msg = u.uuc.GetExistUserByAddressOrCreate(ctx, &biz.User{
 		Address: userAddress,
 	}, req)
-	if err != nil {
+	if nil == user || nil != err {
 		return &pb.EthAuthorizeReply{
 			Token:  "",
 			Status: msg,
@@ -125,35 +129,355 @@ func (u *UserService) EthAuthorize(ctx context.Context, req *pb.EthAuthorizeRequ
 }
 
 func (u *UserService) GetUser(ctx context.Context, req *pb.GetUserRequest) (*pb.GetUserReply, error) {
-	var address string
+	// 在上下文 context 中取出 claims 对象
+	var userId uint64
+	if claims, ok := jwt.FromContext(ctx); ok {
+		c := claims.(jwt2.MapClaims)
+		if c["UserId"] == nil {
+			return &pb.GetUserReply{
+				Status:        "获取用户信息错误",
+				Address:       "",
+				Amount:        "",
+				MyTotalAmount: 0,
+				Vip:           0,
+				CardNum:       "",
+				CardAmount:    "",
+			}, nil
+		}
 
-	return u.uuc.GetUserByAddress(ctx, address)
+		userId = c["UserId"].(uint64)
+	}
+
+	return u.uuc.GetUserById(userId)
 }
 
-//func addressCheck(addressParam string) (bool, error) {
-//	re := regexp.MustCompile("^0x[0-9a-fA-F]{40}$")
-//	if !re.MatchString(addressParam) {
-//		return false, nil
-//	}
-//
-//	client, err := ethclient.Dial("https://bsc-dataseed4.binance.org/")
-//	if err != nil {
-//		return false, err
-//	}
-//
-//	// a random user account address
-//	address := common.HexToAddress(addressParam)
-//	bytecode, err := client.CodeAt(context.Background(), address, nil) // nil is latest block
-//	if err != nil {
-//		return false, err
-//	}
-//
-//	if len(bytecode) > 0 {
-//		return false, nil
-//	}
-//
-//	return true, nil
-//}
+func (u *UserService) UserRecommend(ctx context.Context, req *pb.RecommendListRequest) (*pb.RecommendListReply, error) {
+	return u.uuc.GetUserRecommend(ctx, req)
+}
+
+func (u *UserService) OrderList(ctx context.Context, req *pb.OrderListRequest) (*pb.OrderListReply, error) {
+	// 在上下文 context 中取出 claims 对象
+	var userId uint64
+	if claims, ok := jwt.FromContext(ctx); ok {
+		c := claims.(jwt2.MapClaims)
+		if c["UserId"] == nil {
+			return &pb.OrderListReply{
+				Status: "无效TOKEN",
+			}, nil
+		}
+
+		userId = c["UserId"].(uint64)
+	}
+
+	return u.uuc.OrderList(ctx, req, userId)
+}
+
+func (u *UserService) RewardList(ctx context.Context, req *pb.RewardListRequest) (*pb.RewardListReply, error) {
+	// 在上下文 context 中取出 claims 对象
+	var userId uint64
+	if claims, ok := jwt.FromContext(ctx); ok {
+		c := claims.(jwt2.MapClaims)
+		if c["UserId"] == nil {
+			return &pb.RewardListReply{
+				Status: "无效TOKEN",
+			}, nil
+		}
+
+		userId = c["UserId"].(uint64)
+	}
+
+	return u.uuc.RewardList(ctx, req, userId)
+}
+
+func (u *UserService) OpenCard(ctx context.Context, req *pb.OpenCardRequest) (*pb.OpenCardReply, error) {
+	// 在上下文 context 中取出 claims 对象
+	var (
+		err    error
+		userId uint64
+	)
+
+	if claims, ok := jwt.FromContext(ctx); ok {
+		c := claims.(jwt2.MapClaims)
+		if c["UserId"] == nil {
+			return &pb.OpenCardReply{
+				Status: "无效TOKEN",
+			}, nil
+		}
+
+		userId = c["UserId"].(uint64)
+	}
+
+	var (
+		user *biz.User
+	)
+	user, err = u.uuc.GetUserDataById(userId)
+	if nil != err {
+		return &pb.OpenCardReply{
+			Status: "无效TOKEN",
+		}, nil
+	}
+
+	if 1 == user.IsDelete {
+		return &pb.OpenCardReply{
+			Status: "用户已删除",
+		}, nil
+	}
+
+	var (
+		res             bool
+		addressFromSign string
+	)
+	if 10 >= len(req.SendBody.Sign) {
+		return &pb.OpenCardReply{
+			Status: "签名错误",
+		}, nil
+	}
+	res, addressFromSign = verifySig(req.SendBody.Sign, []byte(user.Address))
+	if !res || addressFromSign != user.Address {
+		return &pb.OpenCardReply{
+			Status: "签名错误",
+		}, nil
+	}
+
+	return u.uuc.OpenCard(ctx, req, userId)
+}
+
+func (u *UserService) AmountToCard(ctx context.Context, req *pb.AmountToCardRequest) (*pb.AmountToCardReply, error) {
+	// 在上下文 context 中取出 claims 对象
+	var (
+		err    error
+		userId uint64
+	)
+
+	if claims, ok := jwt.FromContext(ctx); ok {
+		c := claims.(jwt2.MapClaims)
+		if c["UserId"] == nil {
+			return &pb.AmountToCardReply{
+				Status: "无效TOKEN",
+			}, nil
+		}
+
+		userId = c["UserId"].(uint64)
+	}
+
+	var (
+		user *biz.User
+	)
+	user, err = u.uuc.GetUserDataById(userId)
+	if nil != err {
+		return &pb.AmountToCardReply{
+			Status: "无效TOKEN",
+		}, nil
+	}
+
+	if 1 == user.IsDelete {
+		return &pb.AmountToCardReply{
+			Status: "用户已删除",
+		}, nil
+	}
+
+	var (
+		res             bool
+		addressFromSign string
+	)
+	if 10 >= len(req.SendBody.Sign) {
+		return &pb.AmountToCardReply{
+			Status: "签名错误",
+		}, nil
+	}
+	res, addressFromSign = verifySig(req.SendBody.Sign, []byte(user.Address))
+	if !res || addressFromSign != user.Address {
+		return &pb.AmountToCardReply{
+			Status: "签名错误",
+		}, nil
+	}
+
+	return u.uuc.AmountToCard(ctx, req, userId)
+}
+
+func (u *UserService) SetVip(ctx context.Context, req *pb.SetVipRequest) (*pb.SetVipReply, error) {
+	// 在上下文 context 中取出 claims 对象
+	var (
+		err    error
+		userId uint64
+	)
+
+	if claims, ok := jwt.FromContext(ctx); ok {
+		c := claims.(jwt2.MapClaims)
+		if c["UserId"] == nil {
+			return &pb.SetVipReply{
+				Status: "无效TOKEN",
+			}, nil
+		}
+
+		userId = c["UserId"].(uint64)
+	}
+
+	var (
+		user *biz.User
+	)
+	user, err = u.uuc.GetUserDataById(userId)
+	if nil != err {
+		return &pb.SetVipReply{
+			Status: "无效TOKEN",
+		}, nil
+	}
+
+	if 1 == user.IsDelete {
+		return &pb.SetVipReply{
+			Status: "用户已删除",
+		}, nil
+	}
+
+	var (
+		res             bool
+		addressFromSign string
+	)
+	if 10 >= len(req.SendBody.Sign) {
+		return &pb.SetVipReply{
+			Status: "签名错误",
+		}, nil
+	}
+	res, addressFromSign = verifySig(req.SendBody.Sign, []byte(user.Address))
+	if !res || addressFromSign != user.Address {
+		return &pb.SetVipReply{
+			Status: "签名错误",
+		}, nil
+	}
+
+	return u.uuc.SetVip(ctx, req, userId)
+}
+
+func (u *UserService) AmountTo(ctx context.Context, req *pb.AmountToRequest) (*pb.AmountToReply, error) {
+	// 在上下文 context 中取出 claims 对象
+	var (
+		err    error
+		userId uint64
+	)
+
+	if claims, ok := jwt.FromContext(ctx); ok {
+		c := claims.(jwt2.MapClaims)
+		if c["UserId"] == nil {
+			return &pb.AmountToReply{
+				Status: "无效TOKEN",
+			}, nil
+		}
+
+		userId = c["UserId"].(uint64)
+	}
+
+	var (
+		user *biz.User
+	)
+	user, err = u.uuc.GetUserDataById(userId)
+	if nil != err {
+		return &pb.AmountToReply{
+			Status: "无效TOKEN",
+		}, nil
+	}
+
+	if 1 == user.IsDelete {
+		return &pb.AmountToReply{
+			Status: "用户已删除",
+		}, nil
+	}
+
+	var (
+		res             bool
+		addressFromSign string
+	)
+	if 10 >= len(req.SendBody.Sign) {
+		return &pb.AmountToReply{
+			Status: "签名错误",
+		}, nil
+	}
+	res, addressFromSign = verifySig(req.SendBody.Sign, []byte(user.Address))
+	if !res || addressFromSign != user.Address {
+		return &pb.AmountToReply{
+			Status: "签名错误",
+		}, nil
+	}
+
+	return u.uuc.AmountTo(ctx, req, userId)
+}
+
+func (u *UserService) Withdraw(ctx context.Context, req *pb.WithdrawRequest) (*pb.WithdrawReply, error) {
+	// 在上下文 context 中取出 claims 对象
+	var (
+		err    error
+		userId uint64
+	)
+
+	if claims, ok := jwt.FromContext(ctx); ok {
+		c := claims.(jwt2.MapClaims)
+		if c["UserId"] == nil {
+			return &pb.WithdrawReply{
+				Status: "无效TOKEN",
+			}, nil
+		}
+
+		userId = c["UserId"].(uint64)
+	}
+
+	var (
+		user *biz.User
+	)
+	user, err = u.uuc.GetUserDataById(userId)
+	if nil != err {
+		return &pb.WithdrawReply{
+			Status: "无效TOKEN",
+		}, nil
+	}
+
+	if 1 == user.IsDelete {
+		return &pb.WithdrawReply{
+			Status: "用户已删除",
+		}, nil
+	}
+
+	var (
+		res             bool
+		addressFromSign string
+	)
+	if 10 >= len(req.SendBody.Sign) {
+		return &pb.WithdrawReply{
+			Status: "签名错误",
+		}, nil
+	}
+	res, addressFromSign = verifySig(req.SendBody.Sign, []byte(user.Address))
+	if !res || addressFromSign != user.Address {
+		return &pb.WithdrawReply{
+			Status: "签名错误",
+		}, nil
+	}
+
+	return u.uuc.Withdraw(ctx, req, userId)
+}
+
+func addressCheck(addressParam string) (bool, error) {
+	re := regexp.MustCompile("^0x[0-9a-fA-F]{40}$")
+	if !re.MatchString(addressParam) {
+		return false, nil
+	}
+
+	client, err := ethclient.Dial("https://bsc-dataseed4.binance.org/")
+	if err != nil {
+		return false, err
+	}
+
+	// a random user account address
+	address := common.HexToAddress(addressParam)
+	bytecode, err := client.CodeAt(context.Background(), address, nil) // nil is latest block
+	if err != nil {
+		return false, err
+	}
+
+	if len(bytecode) > 0 {
+		return false, nil
+	}
+
+	return true, nil
+}
 
 func verifySig(sigHex string, msg []byte) (bool, string) {
 	sig := hexutil.MustDecode(sigHex)

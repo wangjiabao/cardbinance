@@ -19,8 +19,16 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	User_EthAuthorize_FullMethodName = "/api.user.v1.User/EthAuthorize"
-	User_GetUser_FullMethodName      = "/api.user.v1.User/GetUser"
+	User_EthAuthorize_FullMethodName  = "/api.user.v1.User/EthAuthorize"
+	User_GetUser_FullMethodName       = "/api.user.v1.User/GetUser"
+	User_UserRecommend_FullMethodName = "/api.user.v1.User/UserRecommend"
+	User_OrderList_FullMethodName     = "/api.user.v1.User/OrderList"
+	User_RewardList_FullMethodName    = "/api.user.v1.User/RewardList"
+	User_OpenCard_FullMethodName      = "/api.user.v1.User/OpenCard"
+	User_AmountToCard_FullMethodName  = "/api.user.v1.User/AmountToCard"
+	User_SetVip_FullMethodName        = "/api.user.v1.User/SetVip"
+	User_AmountTo_FullMethodName      = "/api.user.v1.User/AmountTo"
+	User_Withdraw_FullMethodName      = "/api.user.v1.User/Withdraw"
 )
 
 // UserClient is the client API for User service.
@@ -28,7 +36,24 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type UserClient interface {
 	EthAuthorize(ctx context.Context, in *EthAuthorizeRequest, opts ...grpc.CallOption) (*EthAuthorizeReply, error)
+	// 个人信息
 	GetUser(ctx context.Context, in *GetUserRequest, opts ...grpc.CallOption) (*GetUserReply, error)
+	// 团队信息
+	UserRecommend(ctx context.Context, in *RecommendListRequest, opts ...grpc.CallOption) (*RecommendListReply, error)
+	// 账单列表
+	OrderList(ctx context.Context, in *OrderListRequest, opts ...grpc.CallOption) (*OrderListReply, error)
+	// 明细列表
+	RewardList(ctx context.Context, in *RewardListRequest, opts ...grpc.CallOption) (*RewardListReply, error)
+	// 开卡
+	OpenCard(ctx context.Context, in *OpenCardRequest, opts ...grpc.CallOption) (*OpenCardReply, error)
+	// 划转
+	AmountToCard(ctx context.Context, in *AmountToCardRequest, opts ...grpc.CallOption) (*AmountToCardReply, error)
+	// 设置级别给下级
+	SetVip(ctx context.Context, in *SetVipRequest, opts ...grpc.CallOption) (*SetVipReply, error)
+	// 转账
+	AmountTo(ctx context.Context, in *AmountToRequest, opts ...grpc.CallOption) (*AmountToReply, error)
+	// 提现
+	Withdraw(ctx context.Context, in *WithdrawRequest, opts ...grpc.CallOption) (*WithdrawReply, error)
 }
 
 type userClient struct {
@@ -57,12 +82,101 @@ func (c *userClient) GetUser(ctx context.Context, in *GetUserRequest, opts ...gr
 	return out, nil
 }
 
+func (c *userClient) UserRecommend(ctx context.Context, in *RecommendListRequest, opts ...grpc.CallOption) (*RecommendListReply, error) {
+	out := new(RecommendListReply)
+	err := c.cc.Invoke(ctx, User_UserRecommend_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userClient) OrderList(ctx context.Context, in *OrderListRequest, opts ...grpc.CallOption) (*OrderListReply, error) {
+	out := new(OrderListReply)
+	err := c.cc.Invoke(ctx, User_OrderList_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userClient) RewardList(ctx context.Context, in *RewardListRequest, opts ...grpc.CallOption) (*RewardListReply, error) {
+	out := new(RewardListReply)
+	err := c.cc.Invoke(ctx, User_RewardList_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userClient) OpenCard(ctx context.Context, in *OpenCardRequest, opts ...grpc.CallOption) (*OpenCardReply, error) {
+	out := new(OpenCardReply)
+	err := c.cc.Invoke(ctx, User_OpenCard_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userClient) AmountToCard(ctx context.Context, in *AmountToCardRequest, opts ...grpc.CallOption) (*AmountToCardReply, error) {
+	out := new(AmountToCardReply)
+	err := c.cc.Invoke(ctx, User_AmountToCard_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userClient) SetVip(ctx context.Context, in *SetVipRequest, opts ...grpc.CallOption) (*SetVipReply, error) {
+	out := new(SetVipReply)
+	err := c.cc.Invoke(ctx, User_SetVip_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userClient) AmountTo(ctx context.Context, in *AmountToRequest, opts ...grpc.CallOption) (*AmountToReply, error) {
+	out := new(AmountToReply)
+	err := c.cc.Invoke(ctx, User_AmountTo_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userClient) Withdraw(ctx context.Context, in *WithdrawRequest, opts ...grpc.CallOption) (*WithdrawReply, error) {
+	out := new(WithdrawReply)
+	err := c.cc.Invoke(ctx, User_Withdraw_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // UserServer is the server API for User service.
 // All implementations must embed UnimplementedUserServer
 // for forward compatibility
 type UserServer interface {
 	EthAuthorize(context.Context, *EthAuthorizeRequest) (*EthAuthorizeReply, error)
+	// 个人信息
 	GetUser(context.Context, *GetUserRequest) (*GetUserReply, error)
+	// 团队信息
+	UserRecommend(context.Context, *RecommendListRequest) (*RecommendListReply, error)
+	// 账单列表
+	OrderList(context.Context, *OrderListRequest) (*OrderListReply, error)
+	// 明细列表
+	RewardList(context.Context, *RewardListRequest) (*RewardListReply, error)
+	// 开卡
+	OpenCard(context.Context, *OpenCardRequest) (*OpenCardReply, error)
+	// 划转
+	AmountToCard(context.Context, *AmountToCardRequest) (*AmountToCardReply, error)
+	// 设置级别给下级
+	SetVip(context.Context, *SetVipRequest) (*SetVipReply, error)
+	// 转账
+	AmountTo(context.Context, *AmountToRequest) (*AmountToReply, error)
+	// 提现
+	Withdraw(context.Context, *WithdrawRequest) (*WithdrawReply, error)
 	mustEmbedUnimplementedUserServer()
 }
 
@@ -75,6 +189,30 @@ func (UnimplementedUserServer) EthAuthorize(context.Context, *EthAuthorizeReques
 }
 func (UnimplementedUserServer) GetUser(context.Context, *GetUserRequest) (*GetUserReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetUser not implemented")
+}
+func (UnimplementedUserServer) UserRecommend(context.Context, *RecommendListRequest) (*RecommendListReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UserRecommend not implemented")
+}
+func (UnimplementedUserServer) OrderList(context.Context, *OrderListRequest) (*OrderListReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method OrderList not implemented")
+}
+func (UnimplementedUserServer) RewardList(context.Context, *RewardListRequest) (*RewardListReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RewardList not implemented")
+}
+func (UnimplementedUserServer) OpenCard(context.Context, *OpenCardRequest) (*OpenCardReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method OpenCard not implemented")
+}
+func (UnimplementedUserServer) AmountToCard(context.Context, *AmountToCardRequest) (*AmountToCardReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AmountToCard not implemented")
+}
+func (UnimplementedUserServer) SetVip(context.Context, *SetVipRequest) (*SetVipReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetVip not implemented")
+}
+func (UnimplementedUserServer) AmountTo(context.Context, *AmountToRequest) (*AmountToReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AmountTo not implemented")
+}
+func (UnimplementedUserServer) Withdraw(context.Context, *WithdrawRequest) (*WithdrawReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Withdraw not implemented")
 }
 func (UnimplementedUserServer) mustEmbedUnimplementedUserServer() {}
 
@@ -125,6 +263,150 @@ func _User_GetUser_Handler(srv interface{}, ctx context.Context, dec func(interf
 	return interceptor(ctx, in, info, handler)
 }
 
+func _User_UserRecommend_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RecommendListRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServer).UserRecommend(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: User_UserRecommend_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServer).UserRecommend(ctx, req.(*RecommendListRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _User_OrderList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(OrderListRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServer).OrderList(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: User_OrderList_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServer).OrderList(ctx, req.(*OrderListRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _User_RewardList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RewardListRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServer).RewardList(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: User_RewardList_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServer).RewardList(ctx, req.(*RewardListRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _User_OpenCard_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(OpenCardRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServer).OpenCard(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: User_OpenCard_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServer).OpenCard(ctx, req.(*OpenCardRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _User_AmountToCard_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AmountToCardRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServer).AmountToCard(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: User_AmountToCard_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServer).AmountToCard(ctx, req.(*AmountToCardRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _User_SetVip_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetVipRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServer).SetVip(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: User_SetVip_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServer).SetVip(ctx, req.(*SetVipRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _User_AmountTo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AmountToRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServer).AmountTo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: User_AmountTo_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServer).AmountTo(ctx, req.(*AmountToRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _User_Withdraw_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(WithdrawRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServer).Withdraw(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: User_Withdraw_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServer).Withdraw(ctx, req.(*WithdrawRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // User_ServiceDesc is the grpc.ServiceDesc for User service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -139,6 +421,38 @@ var User_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetUser",
 			Handler:    _User_GetUser_Handler,
+		},
+		{
+			MethodName: "UserRecommend",
+			Handler:    _User_UserRecommend_Handler,
+		},
+		{
+			MethodName: "OrderList",
+			Handler:    _User_OrderList_Handler,
+		},
+		{
+			MethodName: "RewardList",
+			Handler:    _User_RewardList_Handler,
+		},
+		{
+			MethodName: "OpenCard",
+			Handler:    _User_OpenCard_Handler,
+		},
+		{
+			MethodName: "AmountToCard",
+			Handler:    _User_AmountToCard_Handler,
+		},
+		{
+			MethodName: "SetVip",
+			Handler:    _User_SetVip_Handler,
+		},
+		{
+			MethodName: "AmountTo",
+			Handler:    _User_AmountTo_Handler,
+		},
+		{
+			MethodName: "Withdraw",
+			Handler:    _User_Withdraw_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

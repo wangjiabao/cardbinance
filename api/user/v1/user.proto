@@ -16,9 +16,71 @@ service User {
 		};
 	};
 
+	// 个人信息
 	rpc GetUser (GetUserRequest) returns (GetUserReply) {
 		option (google.api.http) = {
 			get: "/api/app_server/user"
+		};
+	};
+
+	// 团队信息
+	rpc UserRecommend (RecommendListRequest) returns (RecommendListReply) {
+		option (google.api.http) = {
+			get: "/api/app_server/recommend_list"
+		};
+	};
+
+	// 账单列表
+	rpc OrderList (OrderListRequest) returns (OrderListReply) {
+		option (google.api.http) = {
+			get: "/api/app_server/order_list"
+		};
+	};
+
+	// 明细列表
+	rpc RewardList (RewardListRequest) returns (RewardListReply) {
+		option (google.api.http) = {
+			get: "/api/app_server/reward_list"
+		};
+	};
+
+	// 开卡
+	rpc OpenCard (OpenCardRequest) returns (OpenCardReply) {
+		option (google.api.http) = {
+			post: "/api/app_server/open_card"
+			body: "send_body"
+		};
+	};
+
+	// 划转
+	rpc AmountToCard (AmountToCardRequest) returns (AmountToCardReply) {
+		option (google.api.http) = {
+			post: "/api/app_server/amount_to_card"
+			body: "send_body"
+		};
+	};
+
+	// 设置级别给下级
+	rpc SetVip (SetVipRequest) returns (SetVipReply) {
+		option (google.api.http) = {
+			post: "/api/app_server/set_vip"
+			body: "send_body"
+		};
+	};
+
+	// 转账
+	rpc AmountTo (AmountToRequest) returns (AmountToReply) {
+		option (google.api.http) = {
+			post: "/api/app_server/amount_to"
+			body: "send_body"
+		};
+	};
+
+	// 提现
+	rpc Withdraw (WithdrawRequest) returns (WithdrawReply) {
+		option (google.api.http) = {
+			post: "/api/app_server/withdraw"
+			body: "send_body"
 		};
 	};
 }
@@ -43,5 +105,129 @@ message GetUserRequest {}
 
 message GetUserReply {
 	string status = 1;
-	string address = 2;
+	string address = 2; // 我的地址
+	string amount = 3; // 充值余额
+	uint64 myTotalAmount = 4; // 我的业绩
+	uint64 vip = 5; // 我的级别
+	string cardNum = 6; // 我的卡号
+	string cardAmount = 7; // 我的卡额度
+	string recommendAddress = 8; // 我的推荐人
+}
+
+message RecommendListRequest {
+	string address = 1;
+}
+
+message RecommendListReply {
+	string status = 1;
+
+	repeated List recommends = 2;
+	message List {
+		string address = 1; // 地址
+		uint64 amount = 2; // 业绩
+		uint64 vip = 3; // 级别
+		uint64 cardOpen = 4; // 开卡状态 0 未开通 1已开通
+	}
+}
+
+message OpenCardRequest {
+	message SendBody {
+		string sign = 4;
+	}
+
+	SendBody send_body = 1;
+}
+
+message OpenCardReply {
+	string status = 1;
+}
+
+message AmountToCardRequest {
+	message SendBody {
+		string sign = 1;
+		uint64 amount = 2;
+	}
+
+	SendBody send_body = 1;
+}
+
+message AmountToCardReply {
+	string status = 1;
+}
+
+message SetVipRequest {
+	message SendBody {
+		string sign = 1;
+		string address = 3;
+		uint64 vip = 2;
+	}
+
+	SendBody send_body = 1;
+}
+
+message SetVipReply {
+	string status = 1;
+}
+
+message AmountToRequest {
+	message SendBody {
+		string sign = 1;
+		uint64 amount = 2;
+		string address = 3;
+	}
+
+	SendBody send_body = 1;
+}
+
+message AmountToReply {
+	string status = 1;
+}
+
+message WithdrawRequest {
+	message SendBody {
+		string sign = 1;
+		uint64 amount = 2;
+	}
+
+	SendBody send_body = 1;
+}
+
+message WithdrawReply {
+	string status = 1;
+}
+
+message RewardListRequest {
+	uint64 page = 1; // 页数
+	uint64 reqType = 2; // 类型：1充值，2提现，3开卡，4划转，5转账，6vip收益
+}
+
+message RewardListReply {
+	string status = 1;
+	uint64 count = 2; // 总数，每页20
+	repeated List list = 3;
+	message List {
+		string createdAt = 1; // 时间
+		string amount = 2; // 数量
+		string address = 4; // 地址 5,6需要展示
+	}
+}
+
+message OrderListRequest {
+	uint64 page = 1; // 页数
+}
+
+message OrderListReply {
+	string status = 1;
+	uint64 count = 2; // 总数，每页20
+	repeated List list = 3;
+	message List {
+		string timestamp = 1; // 交易完成时间
+		string status = 8; // 交易状态
+		string tradeAmount = 2; // 交易金额
+		string actualTransactionAmount = 6; // 实际交易金额
+		string serviceFee = 3; // 手续费
+		string channelFee = 5; // 渠道手续费
+		string tradeDescription = 4; // 交易描述
+		string currentBalance = 7; // 当前余额
+	}
 }
