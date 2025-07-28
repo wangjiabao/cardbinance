@@ -318,6 +318,23 @@ var lockAmount sync.Mutex
 func (uuc *UserUseCase) OpenCard(ctx context.Context, req *pb.OpenCardRequest, userId uint64) (*pb.OpenCardReply, error) {
 	lockAmount.Lock()
 	defer lockAmount.Unlock()
+	var (
+		user *User
+		err  error
+	)
+
+	user, err = uuc.repo.GetUserById(userId)
+	if nil == user || nil != err {
+		return &pb.OpenCardReply{Status: "-1"}, nil
+	}
+
+	if "no" != user.CardNumber {
+		return &pb.OpenCardReply{Status: "已经开卡"}, nil
+	}
+
+	if 10 < len(user.CardOrderId) {
+		return &pb.OpenCardReply{Status: "已经提交开卡信息"}, nil
+	}
 
 	return &pb.OpenCardReply{
 		Status: "ok",
