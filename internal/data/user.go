@@ -283,7 +283,7 @@ func (u *UserRepo) GetConfigByKeys(keys ...string) ([]*biz.Config, error) {
 
 // CreateCard .
 func (u *UserRepo) CreateCard(ctx context.Context, userId uint64, amount float64) error {
-	res := u.data.DB(ctx).Table("user").Where("id=?", userId).Where("amount>=?", amount).Where("card_number=?", "no").
+	res := u.data.DB(ctx).Table("user").Where("id=?", userId).Where("amount>=?", amount).Where("card_order_id=?", "no").
 		Updates(map[string]interface{}{
 			"amount":     gorm.Expr("amount - ?", amount),
 			"updated_at": time.Now().Format("2006-01-02 15:04:05"),
@@ -299,6 +299,80 @@ func (u *UserRepo) CreateCard(ctx context.Context, userId uint64, amount float64
 	reward.UserId = userId
 	reward.Amount = amount
 	reward.Reason = 3 // 给我分红的理由
+	resInsert := u.data.DB(ctx).Table("reward").Create(&reward)
+	if resInsert.Error != nil || 0 >= resInsert.RowsAffected {
+		return errors.New(500, "CREATE_LOCATION_ERROR", "信息创建失败")
+	}
+
+	return nil
+}
+
+// UpdateCard .
+func (u *UserRepo) UpdateCard(ctx context.Context, userId uint64, cardOrderId, card string) error {
+	res := u.data.DB(ctx).Table("user").Where("id=?", userId).Where("card_order_id=?", "no").
+		Updates(map[string]interface{}{
+			"card_order_id": cardOrderId,
+			"card":          card,
+			"updated_at":    time.Now().Format("2006-01-02 15:04:05"),
+		})
+	if res.Error != nil || 0 >= res.RowsAffected {
+		return errors.New(500, "UPDATE_USER_ERROR", "用户信息修改失败")
+	}
+
+	return nil
+}
+
+// GetAllUsers .
+func (u *UserRepo) GetAllUsers() ([]*biz.User, error) {
+	var users []*User
+	if err := u.data.db.Table("user").Order("id asc").Find(&users).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+
+		return nil, errors.New(500, "USER ERROR", err.Error())
+	}
+
+	res := make([]*biz.User, 0)
+	for _, user := range users {
+		res = append(res, &biz.User{
+			CardAmount:    user.CardAmount,
+			MyTotalAmount: user.MyTotalAmount,
+			AmountTwo:     user.AmountTwo,
+			IsDelete:      user.IsDelete,
+			Vip:           user.Vip,
+			ID:            user.ID,
+			Address:       user.Address,
+			Card:          user.Card,
+			Amount:        user.Amount,
+			CreatedAt:     user.CreatedAt,
+			UpdatedAt:     user.UpdatedAt,
+			CardNumber:    user.CardNumber,
+			CardOrderId:   user.CardOrderId,
+		})
+	}
+	return res, nil
+}
+
+// CreateCardRecommend .
+func (u *UserRepo) CreateCardRecommend(ctx context.Context, userId uint64, amount float64, vip uint64, address string) error {
+	res := u.data.DB(ctx).Table("user").Where("id=?", userId).Where("vip=?", vip).
+		Updates(map[string]interface{}{
+			"amount":     gorm.Expr("amount + ?", amount),
+			"updated_at": time.Now().Format("2006-01-02 15:04:05"),
+		})
+	if res.Error != nil || 0 >= res.RowsAffected {
+		return errors.New(500, "UPDATE_USER_ERROR", "用户信息修改失败")
+	}
+	var (
+		reward Reward
+	)
+
+	reward.UserId = userId
+	reward.Amount = amount
+	reward.One = vip
+	reward.Reason = 6 // 给我分红的理由
+	reward.Address = address
 	resInsert := u.data.DB(ctx).Table("reward").Create(&reward)
 	if resInsert.Error != nil || 0 >= resInsert.RowsAffected {
 		return errors.New(500, "CREATE_LOCATION_ERROR", "信息创建失败")
