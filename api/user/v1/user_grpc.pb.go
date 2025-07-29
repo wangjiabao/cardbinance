@@ -19,6 +19,7 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
+	User_CreateNonce_FullMethodName   = "/api.user.v1.User/CreateNonce"
 	User_EthAuthorize_FullMethodName  = "/api.user.v1.User/EthAuthorize"
 	User_GetUser_FullMethodName       = "/api.user.v1.User/GetUser"
 	User_UserRecommend_FullMethodName = "/api.user.v1.User/UserRecommend"
@@ -35,6 +36,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type UserClient interface {
+	CreateNonce(ctx context.Context, in *CreateNonceRequest, opts ...grpc.CallOption) (*CreateNonceReply, error)
 	EthAuthorize(ctx context.Context, in *EthAuthorizeRequest, opts ...grpc.CallOption) (*EthAuthorizeReply, error)
 	// 个人信息
 	GetUser(ctx context.Context, in *GetUserRequest, opts ...grpc.CallOption) (*GetUserReply, error)
@@ -62,6 +64,15 @@ type userClient struct {
 
 func NewUserClient(cc grpc.ClientConnInterface) UserClient {
 	return &userClient{cc}
+}
+
+func (c *userClient) CreateNonce(ctx context.Context, in *CreateNonceRequest, opts ...grpc.CallOption) (*CreateNonceReply, error) {
+	out := new(CreateNonceReply)
+	err := c.cc.Invoke(ctx, User_CreateNonce_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *userClient) EthAuthorize(ctx context.Context, in *EthAuthorizeRequest, opts ...grpc.CallOption) (*EthAuthorizeReply, error) {
@@ -158,6 +169,7 @@ func (c *userClient) Withdraw(ctx context.Context, in *WithdrawRequest, opts ...
 // All implementations must embed UnimplementedUserServer
 // for forward compatibility
 type UserServer interface {
+	CreateNonce(context.Context, *CreateNonceRequest) (*CreateNonceReply, error)
 	EthAuthorize(context.Context, *EthAuthorizeRequest) (*EthAuthorizeReply, error)
 	// 个人信息
 	GetUser(context.Context, *GetUserRequest) (*GetUserReply, error)
@@ -184,6 +196,9 @@ type UserServer interface {
 type UnimplementedUserServer struct {
 }
 
+func (UnimplementedUserServer) CreateNonce(context.Context, *CreateNonceRequest) (*CreateNonceReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateNonce not implemented")
+}
 func (UnimplementedUserServer) EthAuthorize(context.Context, *EthAuthorizeRequest) (*EthAuthorizeReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method EthAuthorize not implemented")
 }
@@ -225,6 +240,24 @@ type UnsafeUserServer interface {
 
 func RegisterUserServer(s grpc.ServiceRegistrar, srv UserServer) {
 	s.RegisterService(&User_ServiceDesc, srv)
+}
+
+func _User_CreateNonce_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateNonceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServer).CreateNonce(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: User_CreateNonce_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServer).CreateNonce(ctx, req.(*CreateNonceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _User_EthAuthorize_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -414,6 +447,10 @@ var User_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "api.user.v1.User",
 	HandlerType: (*UserServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "CreateNonce",
+			Handler:    _User_CreateNonce_Handler,
+		},
 		{
 			MethodName: "EthAuthorize",
 			Handler:    _User_EthAuthorize_Handler,

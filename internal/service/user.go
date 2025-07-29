@@ -31,6 +31,50 @@ func NewUserService(uuc *biz.UserUseCase, logger log.Logger, ca *conf.Auth) *Use
 	return &UserService{uuc: uuc, log: log.NewHelper(logger), ca: ca}
 }
 
+//// SetWalletTimestamp 设置钱包地址对应的时间戳，3 秒后过期
+//func SetWalletTimestamp(wallet string) error {
+//	timestamp := time.Now().Unix()
+//	key := "wallet:" + wallet
+//
+//	// 设置键值，3 秒后自动过期
+//	return rdb.Set(ctx, key, timestamp, 3*time.Second).Err()
+//}
+
+// CreateNonce createNonce.
+func (u *UserService) CreateNonce(ctx context.Context, req *pb.CreateNonceRequest) (*pb.CreateNonceReply, error) {
+	userAddress := req.SendBody.Address // 以太坊账户
+
+	if "" == userAddress || 20 > len(userAddress) ||
+		strings.EqualFold("0x000000000000000000000000000000000000dead", userAddress) {
+		return &pb.CreateNonceReply{
+			Nonce:  "",
+			Status: "账户地址参数错误",
+		}, nil
+	}
+
+	// 验证
+	var (
+		res bool
+		err error
+	)
+
+	res, err = addressCheck(userAddress)
+	if nil != err {
+		return &pb.CreateNonceReply{
+			Nonce:  "",
+			Status: "地址验证失败",
+		}, nil
+	}
+	if !res {
+		return &pb.CreateNonceReply{
+			Nonce:  "",
+			Status: "地址验证失败",
+		}, nil
+	}
+
+	return u.uuc.CreateNonce(ctx, req)
+}
+
 // EthAuthorize ethAuthorize.
 func (u *UserService) EthAuthorize(ctx context.Context, req *pb.EthAuthorizeRequest) (*pb.EthAuthorizeReply, error) {
 	userAddress := req.SendBody.Address // 以太坊账户
@@ -76,6 +120,18 @@ func (u *UserService) EthAuthorize(ctx context.Context, req *pb.EthAuthorizeRequ
 		addressFromSign string
 		content         = []byte(userAddress) // todo 签名内容修改
 	)
+
+	//var (
+	//	contentStr string
+	//)
+	//contentStr, err = u.uuc.GetAddressNonce(ctx, userAddress)
+	//if nil != err {
+	//	return &pb.EthAuthorizeReply{
+	//		Token:  "",
+	//		Status: "错误",
+	//	}, nil
+	//}
+	//content = []byte(contentStr)
 
 	res, addressFromSign = verifySig(req.SendBody.Sign, content)
 	if !res || addressFromSign != userAddress {

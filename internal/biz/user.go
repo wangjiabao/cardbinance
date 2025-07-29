@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"github.com/go-kratos/kratos/v2/errors"
 	"github.com/go-kratos/kratos/v2/log"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"sort"
@@ -52,6 +53,8 @@ type Config struct {
 }
 
 type UserRepo interface {
+	SetNonceByAddress(ctx context.Context, wallet string) (int64, error)
+	GetAndDeleteWalletTimestamp(ctx context.Context, wallet string) (string, error)
 	GetConfigByKeys(keys ...string) ([]*Config, error)
 	GetUserByAddress(address string) (*User, error)
 	GetUserById(userId uint64) (*User, error)
@@ -64,6 +67,7 @@ type UserRepo interface {
 	GetAllUsers() ([]*User, error)
 	UpdateCard(ctx context.Context, userId uint64, cardOrderId, card string) error
 	CreateCardRecommend(ctx context.Context, userId uint64, amount float64, vip uint64, address string) error
+	AmountTo(ctx context.Context, userId, toUserId uint64, toAddress string, amount float64) error
 }
 
 type UserUseCase struct {
@@ -78,76 +82,6 @@ func NewUserUseCase(repo UserRepo, tx Transaction, logger log.Logger) *UserUseCa
 		tx:   tx,
 		log:  log.NewHelper(logger),
 	}
-}
-
-func (uuc *UserUseCase) GetExistUserByAddressOrCreate(ctx context.Context, u *User, req *pb.EthAuthorizeRequest) (*User, error, string) {
-	var (
-		user          *User
-		recommendUser *UserRecommend
-		err           error
-		configs       []*Config
-		vipMax        uint64
-	)
-
-	// 配置
-	configs, err = uuc.repo.GetConfigByKeys("vip_max")
-	if nil != configs {
-		for _, vConfig := range configs {
-			if "vip_max" == vConfig.KeyName {
-				vipMax, _ = strconv.ParseUint(vConfig.Value, 10, 64)
-			}
-		}
-	}
-
-	recommendUser = &UserRecommend{
-		ID:            0,
-		UserId:        0,
-		RecommendCode: "",
-	}
-
-	user, err = uuc.repo.GetUserByAddress(u.Address) // 查询用户
-	if nil == user && nil == err {
-		code := req.SendBody.Code // 查询推荐码 abf00dd52c08a9213f225827bc3fb100 md5 dhbmachinefirst
-		if "abf00dd52c08a9213f225827bc3fb100" != code {
-			if 1 >= len(code) {
-				return nil, errors.New(500, "USER_ERROR", "无效的推荐码1"), "无效的推荐码"
-			}
-			var (
-				userRecommend *User
-			)
-
-			userRecommend, err = uuc.repo.GetUserByAddress(code)
-			if nil == userRecommend || err != nil {
-				return nil, errors.New(500, "USER_ERROR", "无效的推荐码1"), "无效的推荐码"
-			}
-
-			// 查询推荐人的相关信息
-			recommendUser, err = uuc.repo.GetUserRecommendByUserId(userRecommend.ID)
-			if nil == recommendUser || err != nil {
-				return nil, errors.New(500, "USER_ERROR", "无效的推荐码3"), "无效的推荐码3"
-			}
-		} else {
-			u.Vip = vipMax
-		}
-
-		if err = uuc.tx.ExecTx(ctx, func(ctx context.Context) error { // 事务
-			user, err = uuc.repo.CreateUser(ctx, u) // 用户创建
-			if err != nil {
-				return err
-			}
-
-			_, err = uuc.repo.CreateUserRecommend(ctx, user.ID, recommendUser) // 创建用户推荐信息
-			if err != nil {
-				return err
-			}
-
-			return nil
-		}); err != nil {
-			return nil, err, "错误"
-		}
-	}
-
-	return user, err, ""
 }
 
 func (uuc *UserUseCase) GetUserById(userId uint64) (*pb.GetUserReply, error) {
@@ -185,7 +119,6 @@ func (uuc *UserUseCase) GetUserById(userId uint64) (*pb.GetUserReply, error) {
 				myUserRecommendAddress = userRecommendUser.Address
 			}
 		}
-
 	}
 
 	return &pb.GetUserReply{
@@ -325,11 +258,117 @@ func (uuc *UserUseCase) RewardList(ctx context.Context, req *pb.RewardListReques
 	}, nil
 }
 
+// 无锁的
+
+func (uuc *UserUseCase) GetExistUserByAddressOrCreate(ctx context.Context, u *User, req *pb.EthAuthorizeRequest) (*User, error, string) {
+	var (
+		user          *User
+		recommendUser *UserRecommend
+		err           error
+		configs       []*Config
+		vipMax        uint64
+	)
+
+	// 配置
+	configs, err = uuc.repo.GetConfigByKeys("vip_max")
+	if nil != configs {
+		for _, vConfig := range configs {
+			if "vip_max" == vConfig.KeyName {
+				vipMax, _ = strconv.ParseUint(vConfig.Value, 10, 64)
+			}
+		}
+	}
+
+	recommendUser = &UserRecommend{
+		ID:            0,
+		UserId:        0,
+		RecommendCode: "",
+	}
+
+	user, err = uuc.repo.GetUserByAddress(u.Address) // 查询用户
+	if nil == user && nil == err {
+		code := req.SendBody.Code // 查询推荐码 abf00dd52c08a9213f225827bc3fb100 md5 dhbmachinefirst
+		if "abf00dd52c08a9213f225827bc3fb100" != code {
+			if 1 >= len(code) {
+				return nil, errors.New(500, "USER_ERROR", "无效的推荐码1"), "无效的推荐码"
+			}
+			var (
+				userRecommend *User
+			)
+
+			userRecommend, err = uuc.repo.GetUserByAddress(code)
+			if nil == userRecommend || err != nil {
+				return nil, errors.New(500, "USER_ERROR", "无效的推荐码1"), "无效的推荐码"
+			}
+
+			// 查询推荐人的相关信息
+			recommendUser, err = uuc.repo.GetUserRecommendByUserId(userRecommend.ID)
+			if nil == recommendUser || err != nil {
+				return nil, errors.New(500, "USER_ERROR", "无效的推荐码3"), "无效的推荐码3"
+			}
+		} else {
+			u.Vip = vipMax
+		}
+
+		if err = uuc.tx.ExecTx(ctx, func(ctx context.Context) error { // 事务
+			user, err = uuc.repo.CreateUser(ctx, u) // 用户创建
+			if err != nil {
+				return err
+			}
+
+			_, err = uuc.repo.CreateUserRecommend(ctx, user.ID, recommendUser) // 创建用户推荐信息
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}); err != nil {
+			return nil, err, "错误"
+		}
+	}
+
+	return user, err, ""
+}
+
+func (uuc *UserUseCase) SetVip(ctx context.Context, req *pb.SetVipRequest, userId uint64) (*pb.SetVipReply, error) {
+
+	return &pb.SetVipReply{
+		Status: "ok",
+	}, nil
+}
+
+// 有锁的
+
+var lockCreateNonce sync.Mutex
+
+func (uuc *UserUseCase) CreateNonce(ctx context.Context, req *pb.CreateNonceRequest) (*pb.CreateNonceReply, error) {
+	lockCreateNonce.Lock()
+	defer lockCreateNonce.Unlock()
+
+	nonce, err := uuc.repo.SetNonceByAddress(ctx, req.SendBody.Address)
+	if nil != err {
+		return &pb.CreateNonceReply{Nonce: "-1", Status: "生成错误"}, err
+	}
+
+	return &pb.CreateNonceReply{Nonce: strconv.FormatInt(nonce, 10), Status: "ok"}, nil
+}
+
+// 凡是操作的都涉及到这个锁
+var lockNonce sync.Mutex
+
+func (uuc *UserUseCase) GetAddressNonce(ctx context.Context, address string) (string, error) {
+	lockNonce.Lock()
+	defer lockNonce.Unlock()
+
+	return uuc.repo.GetAndDeleteWalletTimestamp(ctx, address)
+}
+
 var lockAmount sync.Mutex
 
 func (uuc *UserUseCase) OpenCard(ctx context.Context, req *pb.OpenCardRequest, userId uint64) (*pb.OpenCardReply, error) {
 	lockAmount.Lock()
 	defer lockAmount.Unlock()
+
 	var (
 		user *User
 		err  error
@@ -337,7 +376,7 @@ func (uuc *UserUseCase) OpenCard(ctx context.Context, req *pb.OpenCardRequest, u
 
 	user, err = uuc.repo.GetUserById(userId)
 	if nil == user || nil != err {
-		return &pb.OpenCardReply{Status: "-1"}, nil
+		return &pb.OpenCardReply{Status: "用户不存在"}, nil
 	}
 
 	if "no" != user.CardNumber {
@@ -472,6 +511,43 @@ func (uuc *UserUseCase) AmountTo(ctx context.Context, req *pb.AmountToRequest, u
 	lockAmount.Lock()
 	defer lockAmount.Unlock()
 
+	var (
+		user   *User
+		toUser *User
+		err    error
+	)
+	user, err = uuc.repo.GetUserById(userId)
+	if nil == user || nil != err {
+		return &pb.AmountToReply{Status: "用户不存在"}, nil
+	}
+
+	if req.SendBody.Amount > uint64(user.Amount) {
+		return &pb.AmountToReply{Status: "账号余额不足"}, nil
+	}
+
+	if 30 > len(req.SendBody.Address) || 60 < len(req.SendBody.Address) {
+		return &pb.AmountToReply{Status: "账号参数格式不正确"}, nil
+	}
+
+	toUser, err = uuc.repo.GetUserByAddress(req.SendBody.Address)
+	if nil == toUser || nil != err {
+		return &pb.AmountToReply{Status: "目标用户不存在"}, nil
+	}
+
+	if err = uuc.tx.ExecTx(ctx, func(ctx context.Context) error { // 事务
+		err = uuc.repo.AmountTo(ctx, userId, toUser.ID, toUser.Address, float64(req.SendBody.Amount))
+		if nil != err {
+			return err
+		}
+
+		return nil
+	}); nil != err {
+		fmt.Println(err, "开卡写入mysql错误", user)
+		return &pb.AmountToReply{
+			Status: "开卡错误，联系管理员",
+		}, nil
+	}
+
 	return &pb.AmountToReply{
 		Status: "ok",
 	}, nil
@@ -482,17 +558,6 @@ func (uuc *UserUseCase) Withdraw(ctx context.Context, req *pb.WithdrawRequest, u
 	defer lockAmount.Unlock()
 
 	return &pb.WithdrawReply{
-		Status: "ok",
-	}, nil
-}
-
-var lockVip sync.Mutex
-
-func (uuc *UserUseCase) SetVip(ctx context.Context, req *pb.SetVipRequest, userId uint64) (*pb.SetVipReply, error) {
-	lockVip.Lock()
-	defer lockVip.Unlock()
-
-	return &pb.SetVipReply{
 		Status: "ok",
 	}, nil
 }
@@ -555,11 +620,11 @@ func GenerateSign(params map[string]string, signKey string) string {
 }
 
 func GenerateNonce(n int) (string, error) {
-	bytes := make([]byte, n)
-	if _, err := rand.Read(bytes); err != nil {
+	bytesTmp := make([]byte, n)
+	if _, err := rand.Read(bytesTmp); err != nil {
 		return "", err
 	}
-	return hex.EncodeToString(bytes), nil
+	return hex.EncodeToString(bytesTmp), nil
 }
 
 func CreateCardRequestWithSign(cardAmount uint64) (*CreateCardResponse, error) {
@@ -569,7 +634,7 @@ func CreateCardRequestWithSign(cardAmount uint64) (*CreateCardResponse, error) {
 	timestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
 	nonce, err := GenerateNonce(8)
 	if err != nil {
-		return nil, fmt.Errorf("生成 nonce 失败: %w", err)
+		return nil, err
 	}
 
 	// 签名字段（仅顶层参与）
@@ -616,7 +681,12 @@ func CreateCardRequestWithSign(cardAmount uint64) (*CreateCardResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		errTwo := Body.Close()
+		if errTwo != nil {
+
+		}
+	}(resp.Body)
 
 	body, _ := ioutil.ReadAll(resp.Body)
 	if resp.StatusCode != http.StatusOK {

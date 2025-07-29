@@ -9,6 +9,13 @@ option java_multiple_files = true;
 option java_package = "api.user.v1";
 
 service User {
+	rpc CreateNonce (CreateNonceRequest) returns (CreateNonceReply) {
+		option (google.api.http) = {
+			post: "/api/app_server/create_nonce"
+			body: "send_body"
+		};
+	};
+
 	rpc EthAuthorize (EthAuthorizeRequest) returns (EthAuthorizeReply) {
 		option (google.api.http) = {
 			post: "/api/app_server/eth_authorize"
@@ -83,6 +90,19 @@ service User {
 			body: "send_body"
 		};
 	};
+}
+
+message CreateNonceRequest {
+	message SendBody{
+		string address = 1;
+	}
+
+	SendBody send_body = 1;
+}
+
+message CreateNonceReply {
+	string status = 1;
+	string nonce = 2;
 }
 
 message EthAuthorizeRequest {

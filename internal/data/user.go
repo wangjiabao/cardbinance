@@ -5,6 +5,7 @@ import (
 	"context"
 	"github.com/go-kratos/kratos/v2/errors"
 	"github.com/go-kratos/kratos/v2/log"
+	"github.com/go-redis/redis/v8"
 	"gorm.io/gorm"
 	"strconv"
 	"time"
@@ -64,6 +65,47 @@ func NewUserRepo(data *Data, logger log.Logger) biz.UserRepo {
 		data: data,
 		log:  log.NewHelper(logger),
 	}
+}
+
+func (u *UserRepo) SetNonceByAddress(ctx context.Context, wallet string) (int64, error) {
+	key := "wallet:" + wallet
+
+	val, err := u.data.rdb.Get(ctx, key).Result()
+	if err == redis.Nil {
+		// 设置键值，60 秒后自动过期
+		timestamp := time.Now().Unix()
+		return timestamp, u.data.rdb.Set(ctx, key, timestamp, 60*time.Second).Err()
+
+	} else if err != nil {
+		return -1, err
+	}
+
+	// 转换为 int64 时间戳
+	t, errThree := strconv.ParseInt(val, 10, 64)
+	if errThree != nil {
+		return 0, errThree
+	}
+
+	return t, nil
+}
+
+// GetAndDeleteWalletTimestamp 获取并删除，确保只用一次（无并发可用）
+func (u *UserRepo) GetAndDeleteWalletTimestamp(ctx context.Context, wallet string) (string, error) {
+	key := "wallet:" + wallet
+
+	val, err := u.data.rdb.Get(ctx, key).Result()
+	if err == redis.Nil {
+		return "", nil
+	} else if err != nil {
+		return "", err
+	}
+
+	// 删除
+	if errTwo := u.data.rdb.Del(ctx, key).Err(); errTwo != nil {
+		return "", errTwo
+	}
+
+	return val, nil
 }
 
 func (u *UserRepo) GetUserByAddress(address string) (*biz.User, error) {
@@ -373,6 +415,42 @@ func (u *UserRepo) CreateCardRecommend(ctx context.Context, userId uint64, amoun
 	reward.One = vip
 	reward.Reason = 6 // 给我分红的理由
 	reward.Address = address
+	resInsert := u.data.DB(ctx).Table("reward").Create(&reward)
+	if resInsert.Error != nil || 0 >= resInsert.RowsAffected {
+		return errors.New(500, "CREATE_LOCATION_ERROR", "信息创建失败")
+	}
+
+	return nil
+}
+
+// AmountTo .
+func (u *UserRepo) AmountTo(ctx context.Context, userId, toUserId uint64, toAddress string, amount float64) error {
+	res := u.data.DB(ctx).Table("user").Where("id=?", userId).Where("amount>=?", amount).
+		Updates(map[string]interface{}{
+			"amount":     gorm.Expr("amount - ?", amount),
+			"updated_at": time.Now().Format("2006-01-02 15:04:05"),
+		})
+	if res.Error != nil || 0 >= res.RowsAffected {
+		return errors.New(500, "UPDATE_USER_ERROR", "用户信息修改失败")
+	}
+
+	resTwo := u.data.DB(ctx).Table("user").Where("id=?", toUserId).
+		Updates(map[string]interface{}{
+			"amount":     gorm.Expr("amount + ?", amount),
+			"updated_at": time.Now().Format("2006-01-02 15:04:05"),
+		})
+	if resTwo.Error != nil || 0 >= resTwo.RowsAffected {
+		return errors.New(500, "UPDATE_USER_ERROR", "用户信息修改失败")
+	}
+
+	var (
+		reward Reward
+	)
+
+	reward.UserId = userId
+	reward.Amount = amount
+	reward.Reason = 5 // 给我分红的理由
+	reward.Address = toAddress
 	resInsert := u.data.DB(ctx).Table("reward").Create(&reward)
 	if resInsert.Error != nil || 0 >= resInsert.RowsAffected {
 		return errors.New(500, "CREATE_LOCATION_ERROR", "信息创建失败")

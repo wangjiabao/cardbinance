@@ -26,7 +26,8 @@ import (
 func wireApp(confServer *conf.Server, confData *conf.Data, auth *conf.Auth, logger log.Logger) (*kratos.App, func(), error) {
 	grpcServer := server.NewGRPCServer(confServer, logger)
 	db := data.NewDB(confData)
-	dataData, cleanup, err := data.NewData(confData, logger, db)
+	client := data.NewRedis(confData)
+	dataData, cleanup, err := data.NewData(confData, logger, db, client)
 	if err != nil {
 		return nil, nil, err
 	}

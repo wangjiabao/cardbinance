@@ -56,6 +56,30 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /api/app_server/create_nonce:
+        post:
+            tags:
+                - User
+            operationId: User_CreateNonce
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/CreateNonceRequest_SendBody'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/CreateNonceReply'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /api/app_server/eth_authorize:
         post:
             tags:
@@ -276,6 +300,18 @@ components:
                     type: string
                 amount:
                     type: string
+                address:
+                    type: string
+        CreateNonceReply:
+            type: object
+            properties:
+                status:
+                    type: string
+                nonce:
+                    type: string
+        CreateNonceRequest_SendBody:
+            type: object
+            properties:
                 address:
                     type: string
         EthAuthorizeReply:
