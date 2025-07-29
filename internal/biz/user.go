@@ -540,7 +540,7 @@ func (uuc *UserUseCase) OpenCard(ctx context.Context, req *pb.OpenCardRequest, u
 	var (
 		resCreatCard *CreateCardResponse
 	)
-	resCreatCard, err = CreateCardRequestWithSign(10)
+	resCreatCard, err = CreateCardRequestWithSign()
 	if nil == resCreatCard || err != nil {
 		return &pb.OpenCardReply{Status: "开卡订单创建失败，联系管理员"}, nil
 	}
@@ -701,19 +701,19 @@ type CreateCardResponse struct {
 	OrderStatus string `json:"orderStatus"`
 }
 
-// GenerateSign 生成签名
 func GenerateSign(params map[string]string, signKey string) string {
-	// 1. 排除 sign 字段
-	delete(params, "sign")
-
-	// 2. 获取字段名并排序
-	keys := make([]string, 0, len(params))
+	// 1. 排除 sign 字段，收集所有 key
+	var keys []string
 	for k := range params {
-		keys = append(keys, k)
+		if k != "sign" {
+			keys = append(keys, k)
+		}
 	}
+
+	// 2. 按 ASCII 升序排序 key
 	sort.Strings(keys)
 
-	// 3. 拼接成 key=value 格式并合并
+	// 3. 拼接 key=value（无任何分隔符）
 	var sb strings.Builder
 	for _, k := range keys {
 		sb.WriteString(k)
@@ -721,11 +721,15 @@ func GenerateSign(params map[string]string, signKey string) string {
 		sb.WriteString(params[k])
 	}
 
-	// 4. 拼接 signKey
-	finalStr := signKey + sb.String()
+	// 4. 前面拼接 signKey
+	signString := signKey + sb.String()
 
-	// 5. MD5 加密
-	hash := md5.Sum([]byte(finalStr))
+	fmt.Println("md5前字符串", signString)
+
+	// 5. 进行 MD5 加密
+	hash := md5.Sum([]byte(signString))
+
+	// 6. 转换为十六进制小写字符串
 	return hex.EncodeToString(hash[:])
 }
 
@@ -737,8 +741,9 @@ func GenerateNonce(n int) (string, error) {
 	return hex.EncodeToString(bytesTmp), nil
 }
 
-func CreateCardRequestWithSign(cardAmount uint64) (*CreateCardResponse, error) {
+func CreateCardRequestWithSign() (*CreateCardResponse, error) {
 	//url := "https://test-api.ispay.com/dev-api/vcc/api/v1/cards/create"
+	//url := "https://www.ispay.com/prod-api/vcc/api/v1/cards/create"
 	url := "http://120.79.173.55:9102/prod-api/vcc/api/v1/cards/create"
 
 	timestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
@@ -751,7 +756,7 @@ func CreateCardRequestWithSign(cardAmount uint64) (*CreateCardResponse, error) {
 	params := map[string]string{
 		"merchantId":    "322338",
 		"cardCurrency":  "USD",
-		"cardAmount":    strconv.FormatUint(cardAmount, 10),
+		"cardAmount":    "1000000",
 		"cardholderId":  "10001",
 		"cardProductId": "20001",
 		"timestamp":     timestamp,
@@ -764,14 +769,14 @@ func CreateCardRequestWithSign(cardAmount uint64) (*CreateCardResponse, error) {
 	reqBody := map[string]interface{}{
 		"merchantId":    "322338",
 		"cardCurrency":  "USD",
-		"cardAmount":    cardAmount,
+		"cardAmount":    1000000,
 		"cardholderId":  10001,
 		"cardProductId": 20001,
 		"timestamp":     timestamp,
 		"nonce":         nonce,
 		"cardSpendRule": map[string]interface{}{
-			"dailyLimit":   500,
-			"monthlyLimit": 10000,
+			"dailyLimit":   250000,
+			"monthlyLimit": 1000000,
 		},
 		"cardRiskControl": map[string]interface{}{
 			"allowedMerchants": []string{"ONLINE"},
@@ -784,7 +789,7 @@ func CreateCardRequestWithSign(cardAmount uint64) (*CreateCardResponse, error) {
 	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 	req.Header.Set("Content-Type", "application/json")
 
-	//fmt.Println("请求报文:", string(jsonData))
+	fmt.Println("请求报文:", string(jsonData))
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -803,8 +808,7 @@ func CreateCardRequestWithSign(cardAmount uint64) (*CreateCardResponse, error) {
 		return nil, err
 	}
 
-	//fmt.Println("响应状态码:", resp.StatusCode)
-	//fmt.Println("响应报文:", string(body)) // ← 打印响应内容
+	fmt.Println("响应报文:", string(body)) // ← 打印响应内容
 
 	var result CreateCardResponse
 	if err = json.Unmarshal(body, &result); err != nil {
