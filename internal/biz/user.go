@@ -84,6 +84,7 @@ type UserRepo interface {
 	CreateUser(ctx context.Context, uc *User) (*User, error)
 	CreateUserRecommend(ctx context.Context, userId uint64, recommendUser *UserRecommend) (*UserRecommend, error)
 	GetUserRecommendByCode(code string) ([]*UserRecommend, error)
+	GetUserRecommendLikeCode(code string) ([]*UserRecommend, error)
 	GetUserByUserIds(userIds []uint64) (map[uint64]*User, error)
 	CreateCard(ctx context.Context, userId uint64, amount float64) error
 	GetAllUsers() ([]*User, error)
@@ -92,6 +93,7 @@ type UserRepo interface {
 	AmountTo(ctx context.Context, userId, toUserId uint64, toAddress string, amount float64) error
 	Withdraw(ctx context.Context, userId uint64, amount, amountRel float64, address string) error
 	GetUserRewardByUserIdPage(ctx context.Context, b *Pagination, userId uint64, reason uint64) ([]*Reward, error, int64)
+	SetVip(ctx context.Context, userId uint64, vip uint64) error
 }
 
 type UserUseCase struct {
@@ -396,13 +398,6 @@ func (uuc *UserUseCase) GetExistUserByAddressOrCreate(ctx context.Context, u *Us
 	return user, err, ""
 }
 
-func (uuc *UserUseCase) SetVip(ctx context.Context, req *pb.SetVipRequest, userId uint64) (*pb.SetVipReply, error) {
-
-	return &pb.SetVipReply{
-		Status: "ok",
-	}, nil
-}
-
 // 有锁的
 
 var lockCreateNonce sync.Mutex
@@ -427,6 +422,102 @@ func (uuc *UserUseCase) GetAddressNonce(ctx context.Context, address string) (st
 	defer lockNonce.Unlock()
 
 	return uuc.repo.GetAndDeleteWalletTimestamp(ctx, address)
+}
+
+var lockVip sync.Mutex
+
+func (uuc *UserUseCase) SetVip(ctx context.Context, req *pb.SetVipRequest, userId uint64) (*pb.SetVipReply, error) {
+	lockVip.Lock()
+	defer lockVip.Unlock()
+
+	var (
+		user   *User
+		toUser *User
+		err    error
+	)
+
+	user, err = uuc.repo.GetUserById(userId)
+	if nil == user || nil != err {
+		return &pb.SetVipReply{Status: "用户不存在"}, nil
+	}
+
+	if 0 > req.SendBody.Vip || 9 < req.SendBody.Vip {
+		return &pb.SetVipReply{Status: "vip等级必须在0-9之间"}, nil
+	}
+
+	if req.SendBody.Vip >= user.Vip {
+		return &pb.SetVipReply{Status: "必须小于自己的vip等级"}, nil
+	}
+
+	if 30 > len(req.SendBody.Address) || 60 < len(req.SendBody.Address) {
+		return &pb.SetVipReply{Status: "账号参数格式不正确"}, nil
+	}
+
+	toUser, err = uuc.repo.GetUserByAddress(req.SendBody.Address)
+	if nil == toUser || nil != err {
+		return &pb.SetVipReply{Status: "目标用户不存在"}, nil
+	}
+
+	if req.SendBody.Vip == toUser.Vip {
+		return &pb.SetVipReply{Status: "无需修改"}, nil
+	}
+
+	var (
+		userRecommend   *UserRecommend
+		myUserRecommend []*UserRecommend
+	)
+	// 推荐
+	userRecommend, err = uuc.repo.GetUserRecommendByUserId(toUser.ID)
+	if nil == userRecommend {
+		return &pb.SetVipReply{Status: "目标用户不存在"}, nil
+	}
+
+	myUserRecommend, err = uuc.repo.GetUserRecommendLikeCode(userRecommend.RecommendCode + "D" + strconv.FormatUint(user.ID, 10))
+	if nil == myUserRecommend || nil != err {
+		return &pb.SetVipReply{Status: "获取数据错误不存在"}, nil
+	}
+
+	var (
+		users    []*User
+		usersMap map[uint64]*User
+	)
+	users, err = uuc.repo.GetAllUsers()
+	if nil == users {
+		return &pb.SetVipReply{Status: "获取数据错误不存在"}, nil
+	}
+
+	usersMap = make(map[uint64]*User, 0)
+	for _, vUsers := range users {
+		usersMap[vUsers.ID] = vUsers
+	}
+
+	for _, v := range myUserRecommend {
+		if _, ok := usersMap[v.UserId]; !ok {
+			return &pb.SetVipReply{Status: "数据异常"}, nil
+		}
+
+		if req.SendBody.Vip <= usersMap[v.UserId].Vip {
+			return &pb.SetVipReply{Status: "团队里存在vip等级大于等当前的设置"}, nil
+		}
+	}
+
+	if err = uuc.tx.ExecTx(ctx, func(ctx context.Context) error { // 事务
+		err = uuc.repo.SetVip(ctx, userId, req.SendBody.Vip)
+		if nil != err {
+			return err
+		}
+
+		return nil
+	}); nil != err {
+		fmt.Println(err, "设置vip写入mysql错误", user)
+		return &pb.SetVipReply{
+			Status: "设置vip错误，联系管理员",
+		}, nil
+	}
+
+	return &pb.SetVipReply{
+		Status: "ok",
+	}, nil
 }
 
 var lockAmount sync.Mutex

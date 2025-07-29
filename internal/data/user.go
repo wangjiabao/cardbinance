@@ -276,6 +276,33 @@ func (u *UserRepo) GetUserRecommendByCode(code string) ([]*biz.UserRecommend, er
 	return res, nil
 }
 
+// GetUserRecommendLikeCode .
+func (u *UserRepo) GetUserRecommendLikeCode(code string) ([]*biz.UserRecommend, error) {
+	var (
+		userRecommends []*UserRecommend
+	)
+	res := make([]*biz.UserRecommend, 0)
+
+	instance := u.data.db.Table("user_recommend").Where("recommend_code Like ?", code+"%")
+	if err := instance.Find(&userRecommends).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return res, nil
+		}
+
+		return nil, errors.New(500, "USER RECOMMEND ERROR", err.Error())
+	}
+
+	for _, userRecommend := range userRecommends {
+		res = append(res, &biz.UserRecommend{
+			UserId:        userRecommend.UserId,
+			RecommendCode: userRecommend.RecommendCode,
+			CreatedAt:     userRecommend.CreatedAt,
+		})
+	}
+
+	return res, nil
+}
+
 // GetUserByUserIds .
 func (u *UserRepo) GetUserByUserIds(userIds []uint64) (map[uint64]*biz.User, error) {
 	var users []*User
@@ -355,6 +382,20 @@ func (u *UserRepo) CreateCard(ctx context.Context, userId uint64, amount float64
 	resInsert := u.data.DB(ctx).Table("reward").Create(&reward)
 	if resInsert.Error != nil || 0 >= resInsert.RowsAffected {
 		return errors.New(500, "CREATE_LOCATION_ERROR", "信息创建失败")
+	}
+
+	return nil
+}
+
+// SetVip .
+func (u *UserRepo) SetVip(ctx context.Context, userId uint64, vip uint64) error {
+	res := u.data.DB(ctx).Table("user").Where("id=?", userId).
+		Updates(map[string]interface{}{
+			"vip":        vip,
+			"updated_at": time.Now().Format("2006-01-02 15:04:05"),
+		})
+	if res.Error != nil || 0 >= res.RowsAffected {
+		return errors.New(500, "UPDATE_USER_ERROR", "用户信息修改失败")
 	}
 
 	return nil
