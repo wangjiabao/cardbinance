@@ -63,6 +63,17 @@ type Withdraw struct {
 	UpdatedAt time.Time
 }
 
+type Reward struct {
+	ID        uint64
+	UserId    uint64
+	Amount    float64
+	Reason    uint64
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	Address   string
+	One       uint64
+}
+
 type UserRepo interface {
 	SetNonceByAddress(ctx context.Context, wallet string) (int64, error)
 	GetAndDeleteWalletTimestamp(ctx context.Context, wallet string) (string, error)
@@ -80,6 +91,7 @@ type UserRepo interface {
 	CreateCardRecommend(ctx context.Context, userId uint64, amount float64, vip uint64, address string) error
 	AmountTo(ctx context.Context, userId, toUserId uint64, toAddress string, amount float64) error
 	Withdraw(ctx context.Context, userId uint64, amount, amountRel float64, address string) error
+	GetUserRewardByUserIdPage(ctx context.Context, b *Pagination, userId uint64, reason uint64) ([]*Reward, error, int64)
 }
 
 type UserUseCase struct {
@@ -132,6 +144,8 @@ func (uuc *UserUseCase) GetUserById(userId uint64) (*pb.GetUserReply, error) {
 			}
 		}
 	}
+
+	// todo 请求api，跟据orderid，获取卡片信息orderNum，并写回数据库
 
 	return &pb.GetUserReply{
 		Status:           "ok",
@@ -252,6 +266,11 @@ func (uuc *UserUseCase) GetUserRecommend(ctx context.Context, req *pb.RecommendL
 	}, nil
 }
 
+type Pagination struct {
+	PageNum  int
+	PageSize int
+}
+
 func (uuc *UserUseCase) OrderList(ctx context.Context, req *pb.OrderListRequest, userId uint64) (*pb.OrderListReply, error) {
 
 	return &pb.OrderListReply{
@@ -262,11 +281,46 @@ func (uuc *UserUseCase) OrderList(ctx context.Context, req *pb.OrderListRequest,
 }
 
 func (uuc *UserUseCase) RewardList(ctx context.Context, req *pb.RewardListRequest, userId uint64) (*pb.RewardListReply, error) {
+	res := make([]*pb.RewardListReply_List, 0)
+
+	var (
+		userRewards []*Reward
+		count       int64
+		err         error
+	)
+
+	if 1 > req.ReqType || 6 < req.ReqType {
+		return &pb.RewardListReply{
+			Status: "参数错误",
+			Count:  0,
+			List:   res,
+		}, nil
+	}
+
+	userRewards, err, count = uuc.repo.GetUserRewardByUserIdPage(ctx, &Pagination{
+		PageNum:  int(req.Page),
+		PageSize: 20,
+	}, userId, req.ReqType)
+	if nil != err {
+		return &pb.RewardListReply{
+			Status: "ok",
+			Count:  uint64(count),
+			List:   res,
+		}, err
+	}
+
+	for _, vUserReward := range userRewards {
+		res = append(res, &pb.RewardListReply_List{
+			CreatedAt: vUserReward.CreatedAt.Add(8 * time.Hour).Format("2006-01-02 15:04:05"),
+			Amount:    fmt.Sprintf("%.4f", vUserReward.Amount),
+			Address:   vUserReward.Address,
+		})
+	}
 
 	return &pb.RewardListReply{
 		Status: "ok",
-		Count:  0,
-		List:   nil,
+		Count:  uint64(count),
+		List:   res,
 	}, nil
 }
 

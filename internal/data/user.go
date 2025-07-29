@@ -507,3 +507,43 @@ func (u *UserRepo) Withdraw(ctx context.Context, userId uint64, amount, amountRe
 
 	return nil
 }
+
+// GetUserRewardByUserIdPage .
+func (u *UserRepo) GetUserRewardByUserIdPage(ctx context.Context, b *biz.Pagination, userId uint64, reason uint64) ([]*biz.Reward, error, int64) {
+	var (
+		count   int64
+		rewards []*Reward
+	)
+
+	res := make([]*biz.Reward, 0)
+
+	instance := u.data.db.Where("user_id", userId).Table("reward").Order("id desc")
+	if 0 < reason {
+		instance = instance.Where("reason=?", reason)
+	}
+
+	instance = instance.Count(&count)
+
+	if err := instance.Scopes(Paginate(b.PageNum, b.PageSize)).Find(&rewards).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return res, errors.NotFound("REWARD_NOT_FOUND", "reward not found"), 0
+		}
+
+		return nil, errors.New(500, "REWARD ERROR", err.Error()), 0
+	}
+
+	for _, reward := range rewards {
+		res = append(res, &biz.Reward{
+			ID:        reward.ID,
+			UserId:    reward.UserId,
+			Amount:    reward.Amount,
+			Reason:    reward.Reason,
+			CreatedAt: reward.CreatedAt,
+			Address:   reward.Address,
+			One:       reward.One,
+			UpdatedAt: reward.UpdatedAt,
+		})
+	}
+
+	return res, nil, count
+}
