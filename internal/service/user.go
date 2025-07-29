@@ -31,14 +31,66 @@ func NewUserService(uuc *biz.UserUseCase, logger log.Logger, ca *conf.Auth) *Use
 	return &UserService{uuc: uuc, log: log.NewHelper(logger), ca: ca}
 }
 
-//// SetWalletTimestamp 设置钱包地址对应的时间戳，3 秒后过期
-//func SetWalletTimestamp(wallet string) error {
-//	timestamp := time.Now().Unix()
-//	key := "wallet:" + wallet
-//
-//	// 设置键值，3 秒后自动过期
-//	return rdb.Set(ctx, key, timestamp, 3*time.Second).Err()
-//}
+func (u *UserService) GetUser(ctx context.Context, req *pb.GetUserRequest) (*pb.GetUserReply, error) {
+	// 在上下文 context 中取出 claims 对象
+	var userId uint64
+	if claims, ok := jwt.FromContext(ctx); ok {
+		c := claims.(jwt2.MapClaims)
+		if c["UserId"] == nil {
+			return &pb.GetUserReply{
+				Status:        "获取用户信息错误",
+				Address:       "",
+				Amount:        "",
+				MyTotalAmount: 0,
+				Vip:           0,
+				CardNum:       "",
+				CardAmount:    "",
+			}, nil
+		}
+
+		userId = uint64(c["UserId"].(float64))
+	}
+
+	return u.uuc.GetUserById(userId)
+}
+
+func (u *UserService) UserRecommend(ctx context.Context, req *pb.RecommendListRequest) (*pb.RecommendListReply, error) {
+	return u.uuc.GetUserRecommend(ctx, req)
+}
+
+func (u *UserService) OrderList(ctx context.Context, req *pb.OrderListRequest) (*pb.OrderListReply, error) {
+	// 在上下文 context 中取出 claims 对象
+	var userId uint64
+	if claims, ok := jwt.FromContext(ctx); ok {
+		c := claims.(jwt2.MapClaims)
+		if c["UserId"] == nil {
+			return &pb.OrderListReply{
+				Status: "无效TOKEN",
+			}, nil
+		}
+
+		userId = uint64(c["UserId"].(float64))
+	}
+
+	return u.uuc.OrderList(ctx, req, userId)
+}
+
+func (u *UserService) RewardList(ctx context.Context, req *pb.RewardListRequest) (*pb.RewardListReply, error) {
+	// 在上下文 context 中取出 claims 对象
+	var userId uint64
+	if claims, ok := jwt.FromContext(ctx); ok {
+		c := claims.(jwt2.MapClaims)
+		if c["UserId"] == nil {
+			return &pb.RewardListReply{
+				Status: "无效TOKEN",
+			}, nil
+		}
+
+		userId = uint64(c["UserId"].(float64))
+	}
+
+	return u.uuc.RewardList(ctx, req, userId)
+}
 
 // CreateNonce createNonce.
 func (u *UserService) CreateNonce(ctx context.Context, req *pb.CreateNonceRequest) (*pb.CreateNonceReply, error) {
@@ -184,40 +236,17 @@ func (u *UserService) EthAuthorize(ctx context.Context, req *pb.EthAuthorizeRequ
 	return &userInfoRsp, nil
 }
 
-func (u *UserService) GetUser(ctx context.Context, req *pb.GetUserRequest) (*pb.GetUserReply, error) {
+func (u *UserService) SetVip(ctx context.Context, req *pb.SetVipRequest) (*pb.SetVipReply, error) {
 	// 在上下文 context 中取出 claims 对象
-	var userId uint64
+	var (
+		err    error
+		userId uint64
+	)
+
 	if claims, ok := jwt.FromContext(ctx); ok {
 		c := claims.(jwt2.MapClaims)
 		if c["UserId"] == nil {
-			return &pb.GetUserReply{
-				Status:        "获取用户信息错误",
-				Address:       "",
-				Amount:        "",
-				MyTotalAmount: 0,
-				Vip:           0,
-				CardNum:       "",
-				CardAmount:    "",
-			}, nil
-		}
-
-		userId = uint64(c["UserId"].(float64))
-	}
-
-	return u.uuc.GetUserById(userId)
-}
-
-func (u *UserService) UserRecommend(ctx context.Context, req *pb.RecommendListRequest) (*pb.RecommendListReply, error) {
-	return u.uuc.GetUserRecommend(ctx, req)
-}
-
-func (u *UserService) OrderList(ctx context.Context, req *pb.OrderListRequest) (*pb.OrderListReply, error) {
-	// 在上下文 context 中取出 claims 对象
-	var userId uint64
-	if claims, ok := jwt.FromContext(ctx); ok {
-		c := claims.(jwt2.MapClaims)
-		if c["UserId"] == nil {
-			return &pb.OrderListReply{
+			return &pb.SetVipReply{
 				Status: "无效TOKEN",
 			}, nil
 		}
@@ -225,24 +254,39 @@ func (u *UserService) OrderList(ctx context.Context, req *pb.OrderListRequest) (
 		userId = uint64(c["UserId"].(float64))
 	}
 
-	return u.uuc.OrderList(ctx, req, userId)
-}
-
-func (u *UserService) RewardList(ctx context.Context, req *pb.RewardListRequest) (*pb.RewardListReply, error) {
-	// 在上下文 context 中取出 claims 对象
-	var userId uint64
-	if claims, ok := jwt.FromContext(ctx); ok {
-		c := claims.(jwt2.MapClaims)
-		if c["UserId"] == nil {
-			return &pb.RewardListReply{
-				Status: "无效TOKEN",
-			}, nil
-		}
-
-		userId = uint64(c["UserId"].(float64))
+	var (
+		user *biz.User
+	)
+	user, err = u.uuc.GetUserDataById(userId)
+	if nil != err {
+		return &pb.SetVipReply{
+			Status: "无效TOKEN",
+		}, nil
 	}
 
-	return u.uuc.RewardList(ctx, req, userId)
+	if 1 == user.IsDelete {
+		return &pb.SetVipReply{
+			Status: "用户已删除",
+		}, nil
+	}
+
+	var (
+		res             bool
+		addressFromSign string
+	)
+	if 10 >= len(req.SendBody.Sign) {
+		return &pb.SetVipReply{
+			Status: "签名错误",
+		}, nil
+	}
+	res, addressFromSign = verifySig(req.SendBody.Sign, []byte(user.Address))
+	if !res || addressFromSign != user.Address {
+		return &pb.SetVipReply{
+			Status: "签名错误",
+		}, nil
+	}
+
+	return u.uuc.SetVip(ctx, req, userId)
 }
 
 func (u *UserService) OpenCard(ctx context.Context, req *pb.OpenCardRequest) (*pb.OpenCardReply, error) {
@@ -349,59 +393,6 @@ func (u *UserService) AmountToCard(ctx context.Context, req *pb.AmountToCardRequ
 	}
 
 	return u.uuc.AmountToCard(ctx, req, userId)
-}
-
-func (u *UserService) SetVip(ctx context.Context, req *pb.SetVipRequest) (*pb.SetVipReply, error) {
-	// 在上下文 context 中取出 claims 对象
-	var (
-		err    error
-		userId uint64
-	)
-
-	if claims, ok := jwt.FromContext(ctx); ok {
-		c := claims.(jwt2.MapClaims)
-		if c["UserId"] == nil {
-			return &pb.SetVipReply{
-				Status: "无效TOKEN",
-			}, nil
-		}
-
-		userId = uint64(c["UserId"].(float64))
-	}
-
-	var (
-		user *biz.User
-	)
-	user, err = u.uuc.GetUserDataById(userId)
-	if nil != err {
-		return &pb.SetVipReply{
-			Status: "无效TOKEN",
-		}, nil
-	}
-
-	if 1 == user.IsDelete {
-		return &pb.SetVipReply{
-			Status: "用户已删除",
-		}, nil
-	}
-
-	var (
-		res             bool
-		addressFromSign string
-	)
-	if 10 >= len(req.SendBody.Sign) {
-		return &pb.SetVipReply{
-			Status: "签名错误",
-		}, nil
-	}
-	res, addressFromSign = verifySig(req.SendBody.Sign, []byte(user.Address))
-	if !res || addressFromSign != user.Address {
-		return &pb.SetVipReply{
-			Status: "签名错误",
-		}, nil
-	}
-
-	return u.uuc.SetVip(ctx, req, userId)
 }
 
 func (u *UserService) AmountTo(ctx context.Context, req *pb.AmountToRequest) (*pb.AmountToReply, error) {

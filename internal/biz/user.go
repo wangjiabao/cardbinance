@@ -52,6 +52,17 @@ type Config struct {
 	Value   string
 }
 
+type Withdraw struct {
+	ID        int64
+	UserId    int64
+	Amount    float64
+	RelAmount float64
+	Status    string
+	Address   string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
 type UserRepo interface {
 	SetNonceByAddress(ctx context.Context, wallet string) (int64, error)
 	GetAndDeleteWalletTimestamp(ctx context.Context, wallet string) (string, error)
@@ -68,6 +79,7 @@ type UserRepo interface {
 	UpdateCard(ctx context.Context, userId uint64, cardOrderId, card string) error
 	CreateCardRecommend(ctx context.Context, userId uint64, amount float64, vip uint64, address string) error
 	AmountTo(ctx context.Context, userId, toUserId uint64, toAddress string, amount float64) error
+	Withdraw(ctx context.Context, userId uint64, amount, amountRel float64, address string) error
 }
 
 type UserUseCase struct {
@@ -556,6 +568,50 @@ func (uuc *UserUseCase) AmountTo(ctx context.Context, req *pb.AmountToRequest, u
 func (uuc *UserUseCase) Withdraw(ctx context.Context, req *pb.WithdrawRequest, userId uint64) (*pb.WithdrawReply, error) {
 	lockAmount.Lock()
 	defer lockAmount.Unlock()
+
+	var (
+		user         *User
+		err          error
+		configs      []*Config
+		withdrawRate float64
+	)
+
+	// 配置
+	configs, err = uuc.repo.GetConfigByKeys("withdraw_rate")
+	if nil != configs {
+		for _, vConfig := range configs {
+			if "withdraw_rate" == vConfig.KeyName {
+				withdrawRate, _ = strconv.ParseFloat(vConfig.Value, 10)
+			}
+		}
+	}
+
+	user, err = uuc.repo.GetUserById(userId)
+	if nil == user || nil != err {
+		return &pb.WithdrawReply{Status: "用户不存在"}, nil
+	}
+
+	if req.SendBody.Amount > uint64(user.Amount) {
+		return &pb.WithdrawReply{Status: "账号余额不足"}, nil
+	}
+
+	amountFloatSubFee := float64(req.SendBody.Amount) - float64(req.SendBody.Amount)*withdrawRate
+	if 0 >= amountFloatSubFee {
+		return &pb.WithdrawReply{Status: "手续费错误"}, nil
+	}
+
+	if err = uuc.tx.ExecTx(ctx, func(ctx context.Context) error { // 事务
+		err = uuc.repo.Withdraw(ctx, userId, float64(req.SendBody.Amount), amountFloatSubFee, user.Address)
+		if nil != err {
+			return err
+		}
+
+		return nil
+	}); nil != err {
+		return &pb.WithdrawReply{
+			Status: "提现错误，联系管理员",
+		}, nil
+	}
 
 	return &pb.WithdrawReply{
 		Status: "ok",

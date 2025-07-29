@@ -55,6 +55,17 @@ type Reward struct {
 	One       uint64    `gorm:"type:int;not null"`
 }
 
+type Withdraw struct {
+	ID        uint64    `gorm:"primarykey;type:int"`
+	UserId    uint64    `gorm:"type:int"`
+	Amount    float64   `gorm:"type:decimal(65,20);not null"`
+	RelAmount float64   `gorm:"type:decimal(65,20);not null"`
+	Status    string    `gorm:"type:varchar(45);not null"`
+	Address   string    `gorm:"type:varchar(45);not null"`
+	CreatedAt time.Time `gorm:"type:datetime;not null"`
+	UpdatedAt time.Time `gorm:"type:datetime;not null"`
+}
+
 type UserRepo struct {
 	data *Data
 	log  *log.Helper
@@ -451,6 +462,44 @@ func (u *UserRepo) AmountTo(ctx context.Context, userId, toUserId uint64, toAddr
 	reward.Amount = amount
 	reward.Reason = 5 // 给我分红的理由
 	reward.Address = toAddress
+	resInsert := u.data.DB(ctx).Table("reward").Create(&reward)
+	if resInsert.Error != nil || 0 >= resInsert.RowsAffected {
+		return errors.New(500, "CREATE_LOCATION_ERROR", "信息创建失败")
+	}
+
+	return nil
+}
+
+// Withdraw .
+func (u *UserRepo) Withdraw(ctx context.Context, userId uint64, amount, amountRel float64, address string) error {
+	res := u.data.DB(ctx).Table("user").Where("id=?", userId).Where("amount>=?", amount).
+		Updates(map[string]interface{}{
+			"amount":     gorm.Expr("amount - ?", amount),
+			"updated_at": time.Now().Format("2006-01-02 15:04:05"),
+		})
+	if res.Error != nil || 0 >= res.RowsAffected {
+		return errors.New(500, "UPDATE_USER_ERROR", "用户信息修改失败")
+	}
+
+	var withdraw Withdraw
+	withdraw.UserId = userId
+	withdraw.Amount = amount
+	withdraw.RelAmount = amountRel
+	withdraw.Status = "rewarded"
+	withdraw.Address = address
+	resTwo := u.data.DB(ctx).Table("withdraw").Create(&withdraw)
+	if resTwo.Error != nil || 0 >= resTwo.RowsAffected {
+		return errors.New(500, "CREATE_WITHDRAW_ERROR", "提现记录创建失败")
+	}
+
+	var (
+		reward Reward
+	)
+
+	reward.UserId = userId
+	reward.Amount = amount
+	reward.Reason = 2 // 给我分红的理由
+	reward.Address = address
 	resInsert := u.data.DB(ctx).Table("reward").Create(&reward)
 	if resInsert.Error != nil || 0 >= resInsert.RowsAffected {
 		return errors.New(500, "CREATE_LOCATION_ERROR", "信息创建失败")
