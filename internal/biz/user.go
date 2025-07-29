@@ -472,6 +472,16 @@ func (uuc *UserUseCase) SetVip(ctx context.Context, req *pb.SetVipRequest, userI
 		return &pb.SetVipReply{Status: "目标用户不存在"}, nil
 	}
 
+	if "" != userRecommend.RecommendCode {
+		tmpRecommendUserIds := strings.Split(userRecommend.RecommendCode, "D")
+		if 2 <= len(tmpRecommendUserIds) {
+			myUserRecommendUserId, _ := strconv.ParseUint(tmpRecommendUserIds[len(tmpRecommendUserIds)-1], 10, 64) // 最后一位是直推人
+			if myUserRecommendUserId <= 0 || myUserRecommendUserId != userId {
+				return &pb.SetVipReply{Status: "推荐人信息错误"}, nil
+			}
+		}
+	}
+
 	myUserRecommend, err = uuc.repo.GetUserRecommendLikeCode(userRecommend.RecommendCode + "D" + strconv.FormatUint(user.ID, 10))
 	if nil == myUserRecommend || nil != err {
 		return &pb.SetVipReply{Status: "获取数据错误不存在"}, nil
@@ -502,7 +512,7 @@ func (uuc *UserUseCase) SetVip(ctx context.Context, req *pb.SetVipRequest, userI
 	}
 
 	if err = uuc.tx.ExecTx(ctx, func(ctx context.Context) error { // 事务
-		err = uuc.repo.SetVip(ctx, userId, req.SendBody.Vip)
+		err = uuc.repo.SetVip(ctx, toUser.ID, req.SendBody.Vip)
 		if nil != err {
 			return err
 		}
