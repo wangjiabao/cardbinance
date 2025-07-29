@@ -290,6 +290,7 @@ func (u *UserService) SetVip(ctx context.Context, req *pb.SetVipRequest) (*pb.Se
 }
 
 func (u *UserService) OpenCard(ctx context.Context, req *pb.OpenCardRequest) (*pb.OpenCardReply, error) {
+	return nil, nil
 	return u.uuc.OpenCard(ctx, req, 1)
 	//// 在上下文 context 中取出 claims 对象
 	//var (

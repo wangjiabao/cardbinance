@@ -648,6 +648,12 @@ func (uuc *UserUseCase) OpenCard(ctx context.Context, req *pb.OpenCardRequest, u
 
 	fmt.Println("开卡信息：", user, resCreatCard)
 
+	if 0 > len(resCreatCard.CardID) || 0 > len(resCreatCard.CardOrderID) {
+		return &pb.OpenCardReply{
+			Status: "开卡失败，联系管理员",
+		}, nil
+	}
+
 	if err = uuc.tx.ExecTx(ctx, func(ctx context.Context) error { // 事务
 		err = uuc.repo.UpdateCard(ctx, userId, resCreatCard.CardOrderID, resCreatCard.CardID)
 		if nil != err {
@@ -802,35 +808,47 @@ type CreateCardResponse struct {
 	OrderStatus string `json:"orderStatus"`
 }
 
-func GenerateSign(params map[string]string, signKey string) string {
-	// 1. 排除 sign 字段，收集所有 key
+func GenerateSign(params map[string]interface{}, signKey string) string {
+	// 1. 排除 sign 字段
 	var keys []string
 	for k := range params {
 		if k != "sign" {
 			keys = append(keys, k)
 		}
 	}
-
-	// 2. 按 ASCII 升序排序 key
 	sort.Strings(keys)
 
-	// 3. 拼接 key=value（无任何分隔符）
+	// 2. 拼接 key + value 字符串
 	var sb strings.Builder
+	sb.WriteString(signKey)
+
 	for _, k := range keys {
 		sb.WriteString(k)
-		sb.WriteString("=")
-		sb.WriteString(params[k])
+		value := params[k]
+
+		var strValue string
+		switch v := value.(type) {
+		case string:
+			strValue = v
+		case float64, int, int64, bool:
+			strValue = fmt.Sprintf("%v", v)
+		default:
+			// map、slice 等复杂类型用 JSON 编码
+			jsonBytes, err := json.Marshal(v)
+			if err != nil {
+				strValue = ""
+			} else {
+				strValue = string(jsonBytes)
+			}
+		}
+		sb.WriteString(strValue)
 	}
 
-	// 4. 前面拼接 signKey
-	signString := signKey + sb.String()
-
+	signString := sb.String()
 	fmt.Println("md5前字符串", signString)
 
-	// 5. 进行 MD5 加密
+	// 3. 进行 MD5 加密
 	hash := md5.Sum([]byte(signString))
-
-	// 6. 转换为十六进制小写字符串
 	return hex.EncodeToString(hash[:])
 }
 
@@ -847,34 +865,12 @@ func CreateCardRequestWithSign() (*CreateCardResponse, error) {
 	//url := "https://www.ispay.com/prod-api/vcc/api/v1/cards/create"
 	url := "http://120.79.173.55:9102/prod-api/vcc/api/v1/cards/create"
 
-	timestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
-	nonce, err := GenerateNonce(8)
-	if err != nil {
-		return nil, err
-	}
-
-	// 签名字段（仅顶层参与）
-	params := map[string]string{
-		"merchantId":    "322338",
-		"cardCurrency":  "USD",
-		"cardAmount":    "1000000",
-		"cardholderId":  "10001",
-		"cardProductId": "20001",
-		"timestamp":     timestamp,
-		"nonce":         nonce,
-	}
-
-	sign := GenerateSign(params, "j4gqNRcpTDJr50AP2xd9obKWZIKWbeo9")
-
-	// 请求体（包括嵌套结构）
 	reqBody := map[string]interface{}{
 		"merchantId":    "322338",
 		"cardCurrency":  "USD",
 		"cardAmount":    1000000,
 		"cardholderId":  10001,
 		"cardProductId": 20001,
-		"timestamp":     timestamp,
-		"nonce":         nonce,
 		"cardSpendRule": map[string]interface{}{
 			"dailyLimit":   250000,
 			"monthlyLimit": 1000000,
@@ -883,14 +879,17 @@ func CreateCardRequestWithSign() (*CreateCardResponse, error) {
 			"allowedMerchants": []string{"ONLINE"},
 			"blockedCountries": []string{},
 		},
-		"sign": sign,
 	}
+
+	sign := GenerateSign(reqBody, "j4gqNRcpTDJr50AP2xd9obKWZIKWbeo9")
+	// 请求体（包括嵌套结构）
+	reqBody["sign"] = sign
 
 	jsonData, _ := json.Marshal(reqBody)
 	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 	req.Header.Set("Content-Type", "application/json")
 
-	fmt.Println("请求报文:", string(jsonData))
+	//fmt.Println("请求报文:", string(jsonData))
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -911,10 +910,10 @@ func CreateCardRequestWithSign() (*CreateCardResponse, error) {
 
 	fmt.Println("响应报文:", string(body)) // ← 打印响应内容
 
-	var result CreateCardResponse
-	if err = json.Unmarshal(body, &result); err != nil {
+	var result *CreateCardResponse
+	if err = json.Unmarshal(body, result); err != nil {
 		return nil, err
 	}
 
-	return &result, nil
+	return result, nil
 }
