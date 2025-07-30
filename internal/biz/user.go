@@ -5,7 +5,6 @@ import (
 	pb "cardbinance/api/user/v1"
 	"context"
 	"crypto/md5"
-	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -763,27 +762,6 @@ func (uuc *UserUseCase) Withdraw(ctx context.Context, req *pb.WithdrawRequest, u
 	}, nil
 }
 
-type CardSpendRule struct {
-	DailyLimit   float64 `json:"dailyLimit"`
-	MonthlyLimit float64 `json:"monthlyLimit"`
-}
-
-type CardRiskControl struct {
-	AllowedMerchants []string `json:"allowedMerchants"`
-	BlockedCountries []string `json:"blockedCountries"`
-}
-
-type CreateCardRequest struct {
-	MerchantID      string          `json:"merchantId"`
-	CardCurrency    string          `json:"cardCurrency"`
-	CardAmount      float64         `json:"cardAmount"`
-	CardholderID    int64           `json:"cardholderId"`
-	CardProductID   int64           `json:"cardProductId"`
-	CardSpendRule   CardSpendRule   `json:"cardSpendRule"`
-	CardRiskControl CardRiskControl `json:"cardRiskControl"`
-	Sign            string          `json:"sign"`
-}
-
 type CreateCardResponse struct {
 	CardID      string `json:"cardId"`
 	CardOrderID string `json:"cardOrderId"`
@@ -834,14 +812,6 @@ func GenerateSign(params map[string]interface{}, signKey string) string {
 	// 3. 进行 MD5 加密
 	hash := md5.Sum([]byte(signString))
 	return hex.EncodeToString(hash[:])
-}
-
-func GenerateNonce(n int) (string, error) {
-	bytesTmp := make([]byte, n)
-	if _, err := rand.Read(bytesTmp); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(bytesTmp), nil
 }
 
 func CreateCardRequestWithSign() (*CreateCardResponse, error) {
