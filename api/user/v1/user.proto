@@ -152,7 +152,16 @@ message RecommendListReply {
 
 message OpenCardRequest {
 	message SendBody {
-		string sign = 4;
+		string sign = 1;
+		string email = 2; // 邮箱
+		string firstName = 3; // 名
+		string lastName = 4; // 姓
+		string countryCode = 5; // 国家代码
+		string phone = 6; // 手机号
+		string city = 7; // 城市
+		string country = 8; // 国家
+		string street = 9; // 街道
+		string postalCode = 10; // 邮政编码
 	}
 
 	SendBody send_body = 1;

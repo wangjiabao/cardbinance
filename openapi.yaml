@@ -369,6 +369,24 @@ components:
             properties:
                 sign:
                     type: string
+                email:
+                    type: string
+                firstName:
+                    type: string
+                lastName:
+                    type: string
+                countryCode:
+                    type: string
+                phone:
+                    type: string
+                city:
+                    type: string
+                country:
+                    type: string
+                street:
+                    type: string
+                postalCode:
+                    type: string
         OrderListReply:
             type: object
             properties:

@@ -13,16 +13,25 @@ import (
 
 type User struct {
 	ID            uint64    `gorm:"primarykey;type:int"`
-	Address       string    `gorm:"type:varchar(100)"`
-	Card          string    `gorm:"type:varchar(100)"`
-	CardOrderId   string    `gorm:"type:varchar(100)"`
-	CardNumber    string    `gorm:"type:varchar(100)"`
+	Address       string    `gorm:"type:varchar(100);default:'no'"`
+	Card          string    `gorm:"type:varchar(100);not null;default:'no'"`
+	CardOrderId   string    `gorm:"type:varchar(100);not null;default:'no'"`
+	CardNumber    string    `gorm:"type:varchar(100);not null;default:'no'"`
 	CardAmount    float64   `gorm:"type:decimal(65,20);not null"`
-	Amount        float64   `gorm:"type:decimal(65,20);"`
+	Amount        float64   `gorm:"type:decimal(65,20)"`
 	IsDelete      uint64    `gorm:"type:int"`
 	Vip           uint64    `gorm:"type:int"`
 	MyTotalAmount uint64    `gorm:"type:bigint"`
 	AmountTwo     uint64    `gorm:"type:bigint"`
+	FirstName     string    `gorm:"type:varchar(45);not null;default:'no'"`
+	LastName      string    `gorm:"type:varchar(45);not null;default:'no'"`
+	Email         string    `gorm:"type:varchar(100);not null;default:'no'"`
+	CountryCode   string    `gorm:"type:varchar(45);not null;default:'no'"`
+	Phone         string    `gorm:"type:varchar(45);not null;default:'no'"`
+	City          string    `gorm:"type:varchar(100);not null;default:'no'"`
+	Country       string    `gorm:"type:varchar(100);not null;default:'no'"`
+	Street        string    `gorm:"type:varchar(100);not null;default:'no'"`
+	PostalCode    string    `gorm:"type:varchar(45);not null;default:'no'"`
 	CreatedAt     time.Time `gorm:"type:datetime;not null"`
 	UpdatedAt     time.Time `gorm:"type:datetime;not null"`
 }
@@ -362,11 +371,21 @@ func (u *UserRepo) GetConfigByKeys(keys ...string) ([]*biz.Config, error) {
 }
 
 // CreateCard .
-func (u *UserRepo) CreateCard(ctx context.Context, userId uint64, amount float64) error {
-	res := u.data.DB(ctx).Table("user").Where("id=?", userId).Where("amount>=?", amount).Where("card_order_id=?", "no").
+func (u *UserRepo) CreateCard(ctx context.Context, userId uint64, user *biz.User) error {
+	res := u.data.DB(ctx).Table("user").Where("id=?", userId).Where("amount>=?", user.Amount).Where("card_order_id=?", "no").
 		Updates(map[string]interface{}{
-			"amount":     gorm.Expr("amount - ?", amount),
-			"updated_at": time.Now().Format("2006-01-02 15:04:05"),
+			"amount":        gorm.Expr("amount - ?", user.Amount),
+			"card_order_id": "do",
+			"first_name":    user.FirstName,
+			"last_name":     user.LastName,
+			"email":         user.Email,
+			"phone":         user.Phone,
+			"country_code":  user.CountryCode,
+			"country":       user.Country,
+			"city":          user.City,
+			"street":        user.Street,
+			"postal_code":   user.PostalCode,
+			"updated_at":    time.Now().Format("2006-01-02 15:04:05"),
 		})
 	if res.Error != nil || 0 >= res.RowsAffected {
 		return errors.New(500, "UPDATE_USER_ERROR", "用户信息修改失败")
@@ -377,7 +396,7 @@ func (u *UserRepo) CreateCard(ctx context.Context, userId uint64, amount float64
 	)
 
 	reward.UserId = userId
-	reward.Amount = amount
+	reward.Amount = user.Amount
 	reward.Reason = 3 // 给我分红的理由
 	resInsert := u.data.DB(ctx).Table("reward").Create(&reward)
 	if resInsert.Error != nil || 0 >= resInsert.RowsAffected {
@@ -443,6 +462,48 @@ func (u *UserRepo) GetAllUsers() ([]*biz.User, error) {
 			UpdatedAt:     user.UpdatedAt,
 			CardNumber:    user.CardNumber,
 			CardOrderId:   user.CardOrderId,
+		})
+	}
+	return res, nil
+}
+
+// GetUsersOpenCard .
+func (u *UserRepo) GetUsersOpenCard() ([]*biz.User, error) {
+	var users []*User
+
+	res := make([]*biz.User, 0)
+	if err := u.data.db.Table("user").Where("card_order_id=?", "do").Order("id asc").Find(&users).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return res, nil
+		}
+
+		return nil, errors.New(500, "USER ERROR", err.Error())
+	}
+
+	for _, user := range users {
+		res = append(res, &biz.User{
+			CardAmount:    user.CardAmount,
+			MyTotalAmount: user.MyTotalAmount,
+			AmountTwo:     user.AmountTwo,
+			IsDelete:      user.IsDelete,
+			Vip:           user.Vip,
+			ID:            user.ID,
+			Address:       user.Address,
+			Card:          user.Card,
+			Amount:        user.Amount,
+			CreatedAt:     user.CreatedAt,
+			UpdatedAt:     user.UpdatedAt,
+			CardNumber:    user.CardNumber,
+			CardOrderId:   user.CardOrderId,
+			FirstName:     user.FirstName,
+			LastName:      user.LastName,
+			Email:         user.Email,
+			CountryCode:   user.CountryCode,
+			Phone:         user.Phone,
+			City:          user.City,
+			Country:       user.Email,
+			Street:        user.Street,
+			PostalCode:    user.PostalCode,
 		})
 	}
 	return res, nil
