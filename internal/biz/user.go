@@ -619,6 +619,10 @@ func (uuc *UserUseCase) OpenCard(ctx context.Context, req *pb.OpenCardRequest, u
 		return &pb.OpenCardReply{Status: "邮政编码错误"}, nil
 	}
 
+	if 1 > len(req.SendBody.BirthDate) || len(req.SendBody.BirthDate) > 99 {
+		return &pb.OpenCardReply{Status: "生日错误"}, nil
+	}
+
 	if err = uuc.tx.ExecTx(ctx, func(ctx context.Context) error { // 事务
 		err = uuc.repo.CreateCard(ctx, userId, &User{
 			Amount:      10,
