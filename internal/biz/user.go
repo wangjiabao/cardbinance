@@ -120,6 +120,7 @@ func NewUserUseCase(repo UserRepo, tx Transaction, logger log.Logger) *UserUseCa
 	}
 }
 
+//  todo
 func (uuc *UserUseCase) GetUserById(userId uint64) (*pb.GetUserReply, error) {
 	var (
 		user                   *User
@@ -283,6 +284,7 @@ type Pagination struct {
 	PageSize int
 }
 
+// todo
 func (uuc *UserUseCase) OrderList(ctx context.Context, req *pb.OrderListRequest, userId uint64) (*pb.OrderListReply, error) {
 
 	return &pb.OrderListReply{
@@ -634,6 +636,7 @@ func (uuc *UserUseCase) OpenCard(ctx context.Context, req *pb.OpenCardRequest, u
 	}, nil
 }
 
+// todo
 func (uuc *UserUseCase) AmountToCard(ctx context.Context, req *pb.AmountToCardRequest, userId uint64) (*pb.AmountToCardReply, error) {
 	lockAmount.Lock()
 	defer lockAmount.Unlock()
@@ -742,6 +745,7 @@ func (uuc *UserUseCase) Withdraw(ctx context.Context, req *pb.WithdrawRequest, u
 	}, nil
 }
 
+// todo
 func (uuc *UserUseCase) OpenCardHandle(ctx context.Context, req *pb.OpenCardRequest, userId uint64) (*pb.OpenCardReply, error) {
 	var (
 		userOpenCard []*User

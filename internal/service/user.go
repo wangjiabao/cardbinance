@@ -173,6 +173,7 @@ func (u *UserService) EthAuthorize(ctx context.Context, req *pb.EthAuthorizeRequ
 		content         = []byte(userAddress) // todo 签名内容修改
 	)
 
+	// todo
 	//var (
 	//	contentStr string
 	//)
