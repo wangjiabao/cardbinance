@@ -32,6 +32,7 @@ type User struct {
 	Country       string    `gorm:"type:varchar(100);not null;default:'no'"`
 	Street        string    `gorm:"type:varchar(100);not null;default:'no'"`
 	PostalCode    string    `gorm:"type:varchar(45);not null;default:'no'"`
+	BirthDate     string    `gorm:"type:varchar(45);not null;default:'no'"`
 	CreatedAt     time.Time `gorm:"type:datetime;not null"`
 	UpdatedAt     time.Time `gorm:"type:datetime;not null"`
 }
@@ -385,6 +386,7 @@ func (u *UserRepo) CreateCard(ctx context.Context, userId uint64, user *biz.User
 			"city":          user.City,
 			"street":        user.Street,
 			"postal_code":   user.PostalCode,
+			"birth_date":    user.BirthDate,
 			"updated_at":    time.Now().Format("2006-01-02 15:04:05"),
 		})
 	if res.Error != nil || 0 >= res.RowsAffected {
@@ -501,9 +503,10 @@ func (u *UserRepo) GetUsersOpenCard() ([]*biz.User, error) {
 			CountryCode:   user.CountryCode,
 			Phone:         user.Phone,
 			City:          user.City,
-			Country:       user.Email,
+			Country:       user.Country,
 			Street:        user.Street,
 			PostalCode:    user.PostalCode,
+			BirthDate:     user.BirthDate,
 		})
 	}
 	return res, nil

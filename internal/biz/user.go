@@ -42,6 +42,7 @@ type User struct {
 	Country       string
 	Street        string
 	PostalCode    string
+	BirthDate     string
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 }
@@ -630,6 +631,7 @@ func (uuc *UserUseCase) OpenCard(ctx context.Context, req *pb.OpenCardRequest, u
 			Country:     req.SendBody.Country,
 			Street:      req.SendBody.Street,
 			PostalCode:  req.SendBody.PostalCode,
+			BirthDate:   req.SendBody.BirthDate,
 		})
 		if nil != err {
 			return err
@@ -755,116 +757,6 @@ func (uuc *UserUseCase) Withdraw(ctx context.Context, req *pb.WithdrawRequest, u
 	return &pb.WithdrawReply{
 		Status: "ok",
 	}, nil
-}
-
-// todo
-func (uuc *UserUseCase) OpenCardHandle(ctx context.Context, req *pb.OpenCardRequest, userId uint64) (*pb.OpenCardReply, error) {
-	var (
-		userOpenCard []*User
-		err          error
-	)
-
-	userOpenCard, err = uuc.repo.GetUsersOpenCard()
-	if nil != err {
-		return nil, err
-	}
-
-	var (
-		users    []*User
-		usersMap map[uint64]*User
-	)
-	users, err = uuc.repo.GetAllUsers()
-	if nil == users {
-		return &pb.OpenCardReply{Status: "信息错误"}, nil
-	}
-
-	usersMap = make(map[uint64]*User, 0)
-	for _, vUsers := range users {
-		usersMap[vUsers.ID] = vUsers
-	}
-
-	for _, user := range userOpenCard {
-		var (
-			userRecommend *UserRecommend
-		)
-		tmpRecommendUserIds := make([]string, 0)
-		// 推荐
-		userRecommend, err = uuc.repo.GetUserRecommendByUserId(user.ID)
-		if nil == userRecommend {
-			return &pb.OpenCardReply{Status: "信息错误"}, nil
-		}
-		if "" != userRecommend.RecommendCode {
-			tmpRecommendUserIds = strings.Split(userRecommend.RecommendCode, "D")
-		}
-
-		totalTmp := len(tmpRecommendUserIds) - 1
-		lastVip := uint64(0)
-		for i := totalTmp; i >= 0; i-- {
-			tmpUserId, _ := strconv.ParseUint(tmpRecommendUserIds[i], 10, 64) // 最后一位是直推人
-			if 0 >= tmpUserId {
-				continue
-			}
-
-			if _, ok := usersMap[tmpUserId]; !ok {
-				fmt.Println("开卡遍历，信息缺失：", tmpUserId)
-				continue
-			}
-
-			if 0 == usersMap[tmpUserId].Vip && 0 == lastVip {
-				continue
-			}
-
-			if lastVip >= usersMap[tmpUserId].Vip {
-				fmt.Println("开卡遍历，vip信息设置错误：", usersMap[tmpUserId], lastVip)
-				break
-			}
-
-			tmpRate := usersMap[tmpUserId].Vip - lastVip
-			lastVip = usersMap[tmpUserId].Vip
-			tmpAmount := tmpRate
-
-			if err = uuc.tx.ExecTx(ctx, func(ctx context.Context) error { // 事务
-				err = uuc.repo.CreateCardRecommend(ctx, tmpUserId, float64(tmpAmount), usersMap[tmpUserId].Vip, user.Address)
-				if err != nil {
-					return err
-				}
-
-				return nil
-			}); nil != err {
-				fmt.Println("err reward", err, user, usersMap[tmpUserId])
-			}
-		}
-
-		var (
-			resCreatCard *CreateCardResponse
-		)
-		resCreatCard, err = CreateCardRequestWithSign()
-		if nil == resCreatCard || err != nil {
-			return &pb.OpenCardReply{Status: "开卡订单创建失败，联系管理员"}, nil
-		}
-
-		fmt.Println("开卡信息：", user, resCreatCard)
-
-		if 0 > len(resCreatCard.CardID) || 0 > len(resCreatCard.CardOrderID) {
-			return &pb.OpenCardReply{
-				Status: "开卡失败，联系管理员",
-			}, nil
-		}
-
-		if err = uuc.tx.ExecTx(ctx, func(ctx context.Context) error { // 事务
-			err = uuc.repo.UpdateCard(ctx, userId, resCreatCard.CardOrderID, resCreatCard.CardID)
-			if nil != err {
-				return err
-			}
-
-			return nil
-		}); nil != err {
-			fmt.Println(err, "开卡后，写入mysql错误", err, user, resCreatCard)
-			return &pb.OpenCardReply{Status: "开卡信息留存失败，联系管理员"}, nil
-		}
-	}
-
-	return nil, nil
 }
 
 type CardSpendRule struct {

@@ -163,6 +163,7 @@ message OpenCardRequest {
 		string country = 8; // 国家
 		string street = 9; // 街道
 		string postalCode = 10; // 邮政编码
+		string birthDate = 11; // 邮政编码
 	}
 
 	SendBody send_body = 1;

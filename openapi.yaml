@@ -389,6 +389,8 @@ components:
                     type: string
                 postalCode:
                     type: string
+                birthDate:
+                    type: string
         OrderListReply:
             type: object
             properties:
