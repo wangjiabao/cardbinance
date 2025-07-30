@@ -130,6 +130,7 @@ message GetUserReply {
 	uint64 myTotalAmount = 4; // 我的业绩
 	uint64 vip = 5; // 我的级别
 	string cardNum = 6; // 我的卡号
+	uint64 cardStatus = 9; //  激活状态
 	string cardAmount = 7; // 我的卡额度
 	string recommendAddress = 8; // 我的推荐人
 }
