@@ -614,9 +614,9 @@ func (uuc *UserUseCase) OpenCard(ctx context.Context, req *pb.OpenCardRequest, u
 		return &pb.OpenCardReply{Status: "城市错误"}, nil
 	}
 
-	if 1 > len(req.SendBody.Country) || len(req.SendBody.Country) > 99 {
-		return &pb.OpenCardReply{Status: "国家错误"}, nil
-	}
+	//if 1 > len(req.SendBody.Country) || len(req.SendBody.Country) > 99 {
+	//	return &pb.OpenCardReply{Status: "国家错误"}, nil
+	//}
 
 	if 1 > len(req.SendBody.PostalCode) || len(req.SendBody.PostalCode) > 99 {
 		return &pb.OpenCardReply{Status: "邮政编码错误"}, nil
