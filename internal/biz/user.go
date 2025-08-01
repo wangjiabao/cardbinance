@@ -666,7 +666,18 @@ func (uuc *UserUseCase) OpenCard(ctx context.Context, req *pb.OpenCardRequest, u
 	var (
 		resCreatCardholder *CreateCardholderResponse
 	)
-	resCreatCardholder, err = CreateCardholderRequest(productIdUseInt64, user)
+	resCreatCardholder, err = CreateCardholderRequest(productIdUseInt64, &User{
+		FirstName:   req.SendBody.FirstName,
+		LastName:    req.SendBody.LastName,
+		Email:       req.SendBody.Email,
+		CountryCode: req.SendBody.CountryCode,
+		Phone:       req.SendBody.Phone,
+		City:        req.SendBody.City,
+		Country:     req.SendBody.Country,
+		Street:      req.SendBody.Street,
+		PostalCode:  req.SendBody.PostalCode,
+		BirthDate:   req.SendBody.BirthDate,
+	})
 	if nil == resCreatCardholder || err != nil {
 		fmt.Println("持卡人订单创建失败:", user, resCreatCardholder, err)
 		return &pb.OpenCardReply{Status: "请求创建持卡人系统错误"}, nil
