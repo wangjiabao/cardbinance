@@ -1011,6 +1011,7 @@ func CreateCardholderRequest(productId uint64, user *User) (*CreateCardholderRes
 		return nil, fmt.Errorf("new request error: %v", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Language", "zh_CN")
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
