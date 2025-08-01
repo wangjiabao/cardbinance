@@ -990,7 +990,7 @@ func CreateCardholderRequest(productId uint64, user *User) (*CreateCardholderRes
 		"phoneNumber": user.Phone,
 		"deliveryAddress": map[string]interface{}{
 			"city":       user.City,
-			"country":    user.Country,
+			"country":    user.CountryCode,
 			"street":     user.Street,
 			"postalCode": user.PostalCode,
 		},
