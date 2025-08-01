@@ -33,6 +33,9 @@ type User struct {
 	Street        string    `gorm:"type:varchar(100);not null;default:'no'"`
 	PostalCode    string    `gorm:"type:varchar(45);not null;default:'no'"`
 	BirthDate     string    `gorm:"type:varchar(45);not null;default:'no'"`
+	MaxCardQuota  uint64    `gorm:"type:bigint"`
+	ProductId     string    `gorm:"type:varchar(45);not null;default:'0'"`
+	CardUserId    string    `gorm:"type:varchar(45);not null;default:'0'"`
 	CreatedAt     time.Time `gorm:"type:datetime;not null"`
 	UpdatedAt     time.Time `gorm:"type:datetime;not null"`
 }
@@ -375,19 +378,22 @@ func (u *UserRepo) GetConfigByKeys(keys ...string) ([]*biz.Config, error) {
 func (u *UserRepo) CreateCard(ctx context.Context, userId uint64, user *biz.User) error {
 	res := u.data.DB(ctx).Table("user").Where("id=?", userId).Where("amount>=?", user.Amount).Where("card_order_id=?", "no").
 		Updates(map[string]interface{}{
-			"amount":        gorm.Expr("amount - ?", user.Amount),
-			"card_order_id": "do",
-			"first_name":    user.FirstName,
-			"last_name":     user.LastName,
-			"email":         user.Email,
-			"phone":         user.Phone,
-			"country_code":  user.CountryCode,
-			"country":       user.Country,
-			"city":          user.City,
-			"street":        user.Street,
-			"postal_code":   user.PostalCode,
-			"birth_date":    user.BirthDate,
-			"updated_at":    time.Now().Format("2006-01-02 15:04:05"),
+			"amount":         gorm.Expr("amount - ?", user.Amount),
+			"card_order_id":  "do",
+			"first_name":     user.FirstName,
+			"last_name":      user.LastName,
+			"email":          user.Email,
+			"phone":          user.Phone,
+			"country_code":   user.CountryCode,
+			"country":        user.Country,
+			"city":           user.City,
+			"street":         user.Street,
+			"postal_code":    user.PostalCode,
+			"birth_date":     user.BirthDate,
+			"max_card_quota": user.MaxCardQuota,
+			"card_user_id":   user.CardUserId,
+			"product_id":     user.ProductId,
+			"updated_at":     time.Now().Format("2006-01-02 15:04:05"),
 		})
 	if res.Error != nil || 0 >= res.RowsAffected {
 		return errors.New(500, "UPDATE_USER_ERROR", "用户信息修改失败")

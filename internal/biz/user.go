@@ -13,6 +13,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"sort"
 	"strconv"
 	"strings"
@@ -42,6 +43,9 @@ type User struct {
 	Street        string
 	PostalCode    string
 	BirthDate     string
+	CardUserId    string
+	ProductId     string
+	MaxCardQuota  uint64
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 }
@@ -622,19 +626,79 @@ func (uuc *UserUseCase) OpenCard(ctx context.Context, req *pb.OpenCardRequest, u
 		return &pb.OpenCardReply{Status: "生日错误"}, nil
 	}
 
+	var (
+		products          *CardProductListResponse
+		productIdUse      string
+		productIdUseInt64 uint64
+		maxCardQuota      uint64
+	)
+	products, err = GetCardProducts()
+	if nil == products || nil != err {
+		//fmt.Println("产品信息错误1")
+		return &pb.OpenCardReply{Status: "获取产品信息错误"}, nil
+	}
+
+	for _, v := range products.Rows {
+		if 0 < len(v.ProductId) && "ENABLED" == v.ProductStatus {
+			productIdUse = v.ProductId
+			maxCardQuota = v.MaxCardQuota
+			productIdUseInt64, err = strconv.ParseUint(productIdUse, 10, 64)
+			if nil != err {
+				//fmt.Println("产品信息错误2")
+				return &pb.OpenCardReply{Status: "获取产品信息错误"}, nil
+			}
+			//fmt.Println("当前选择产品信息", productIdUse, maxCardQuota, v)
+			break
+		}
+	}
+
+	if 0 >= maxCardQuota {
+		//fmt.Println("产品信息错误3")
+		return &pb.OpenCardReply{Status: "获取产品信息错误,额度0"}, nil
+	}
+
+	if 0 >= productIdUseInt64 {
+		//fmt.Println("产品信息错误4")
+		return &pb.OpenCardReply{Status: "获取产品信息错误,产品id0"}, nil
+	}
+
+	// 请求
+	var (
+		resCreatCardholder *CreateCardholderResponse
+	)
+	resCreatCardholder, err = CreateCardholderRequest(productIdUseInt64, user)
+	if nil == resCreatCardholder || err != nil {
+		fmt.Println("持卡人订单创建失败:", user, resCreatCardholder, err)
+		return &pb.OpenCardReply{Status: "请求创建持卡人系统错误"}, nil
+	}
+	if 200 != resCreatCardholder.Code {
+		fmt.Println("请求创建持卡人系统错误", user, resCreatCardholder, err)
+		return &pb.OpenCardReply{Status: "请求创建持卡人系统错误" + resCreatCardholder.Msg}, nil
+	}
+
+	if 0 > len(resCreatCardholder.Data.HolderID) {
+		fmt.Println("持卡人订单信息错误", user, resCreatCardholder, err)
+		return &pb.OpenCardReply{Status: "请求创建持卡人系统错误，信息缺失"}, nil
+	}
+
+	fmt.Println("持卡人信息", user, resCreatCardholder)
+
 	if err = uuc.tx.ExecTx(ctx, func(ctx context.Context) error { // 事务
 		err = uuc.repo.CreateCard(ctx, userId, &User{
-			Amount:      10,
-			FirstName:   req.SendBody.FirstName,
-			LastName:    req.SendBody.LastName,
-			Email:       req.SendBody.Email,
-			CountryCode: req.SendBody.CountryCode,
-			Phone:       req.SendBody.Phone,
-			City:        req.SendBody.City,
-			Country:     req.SendBody.Country,
-			Street:      req.SendBody.Street,
-			PostalCode:  req.SendBody.PostalCode,
-			BirthDate:   req.SendBody.BirthDate,
+			Amount:       10,
+			CardUserId:   resCreatCardholder.Data.HolderID,
+			MaxCardQuota: maxCardQuota,
+			ProductId:    productIdUse,
+			FirstName:    req.SendBody.FirstName,
+			LastName:     req.SendBody.LastName,
+			Email:        req.SendBody.Email,
+			CountryCode:  req.SendBody.CountryCode,
+			Phone:        req.SendBody.Phone,
+			City:         req.SendBody.City,
+			Country:      req.SendBody.Country,
+			Street:       req.SendBody.Street,
+			PostalCode:   req.SendBody.PostalCode,
+			BirthDate:    req.SendBody.BirthDate,
 		})
 		if nil != err {
 			return err
@@ -870,4 +934,177 @@ func CreateCardRequestWithSign() (*CreateCardResponse, error) {
 	}
 
 	return result, nil
+}
+
+type CreateCardholderResponse struct {
+	Code int    `json:"code"`
+	Msg  string `json:"msg"`
+	Data struct {
+		HolderID    string `json:"holderId"`
+		Email       string `json:"email"`
+		FirstName   string `json:"firstName"`
+		LastName    string `json:"lastName"`
+		BirthDate   string `json:"birthDate"`
+		CountryCode string `json:"countryCode"`
+		PhoneNumber string `json:"phoneNumber"`
+
+		DeliveryAddress DeliveryAddress `json:"deliveryAddress"`
+		//ProofFile       ProofFile       `json:"proofFile"`
+	} `json:"data"`
+}
+
+type DeliveryAddress struct {
+	City    string `json:"city"`
+	Country string `json:"country"`
+	Street  string `json:"street"`
+}
+
+type ProofFile struct {
+	FileBase64 string `json:"fileBase64"`
+	FileType   string `json:"fileType"`
+}
+
+func CreateCardholderRequest(productId uint64, user *User) (*CreateCardholderResponse, error) {
+	//baseURL := "https://www.ispay.com/prod-api/vcc/api/v1/cards/holders/create"
+	baseURL := "http://120.79.173.55:9102/prod-api/vcc/api/v1/cards/holders/create"
+
+	reqBody := map[string]interface{}{
+		"productId":   productId,
+		"merchantId":  "322338",
+		"email":       user.Email,
+		"firstName":   user.FirstName,
+		"lastName":    user.LastName,
+		"birthDate":   user.BirthDate,
+		"countryCode": user.CountryCode,
+		"phoneNumber": user.Phone,
+		"deliveryAddress": map[string]interface{}{
+			"city":       user.City,
+			"country":    user.Country,
+			"street":     user.Street,
+			"postalCode": user.PostalCode,
+		},
+	}
+
+	// 生成签名
+	sign := GenerateSign(reqBody, "j4gqNRcpTDJr50AP2xd9obKWZIKWbeo9") // 用你的密钥替换
+	reqBody["sign"] = sign
+
+	// 构造请求
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("json marshal error: %v", err)
+	}
+
+	req, err := http.NewRequest("POST", baseURL, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return nil, fmt.Errorf("new request error: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("http do error: %v", err)
+	}
+	defer func(Body io.ReadCloser) {
+		errTwo := Body.Close()
+		if errTwo != nil {
+
+		}
+	}(resp.Body)
+
+	body, _ := io.ReadAll(resp.Body)
+	fmt.Println("响应报文:", string(body))
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("http status not ok: %v", resp.StatusCode)
+	}
+
+	var result CreateCardholderResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("json unmarshal error: %v", err)
+	}
+
+	return &result, nil
+}
+
+type CardProductListResponse struct {
+	Total int           `json:"total"`
+	Rows  []CardProduct `json:"rows"`
+	Code  int           `json:"code"`
+	Msg   string        `json:"msg"`
+}
+
+type CardProduct struct {
+	ProductId          string       `json:"productId"` // ← 改成 string
+	ProductName        string       `json:"productName"`
+	ModeType           string       `json:"modeType"`
+	CardBin            string       `json:"cardBin"`
+	CardForm           []string     `json:"cardForm"`
+	MaxCardQuota       uint64       `json:"maxCardQuota"`
+	CardScheme         string       `json:"cardScheme"`
+	NoPinPaymentAmount []AmountItem `json:"noPinPaymentAmount"`
+	CardCurrency       []string     `json:"cardCurrency"`
+	CreateTime         string       `json:"createTime"`
+	UpdateTime         string       `json:"updateTime"`
+	ProductStatus      string       `json:"productStatus"`
+}
+
+type AmountItem struct {
+	Amount   string `json:"amount"`
+	Currency string `json:"currency"`
+}
+
+func GetCardProducts() (*CardProductListResponse, error) {
+	baseURL := "http://120.79.173.55:9102/prod-api/vcc/api/v1/cards/products/all"
+
+	reqBody := map[string]interface{}{
+		"merchantId": "322338",
+	}
+
+	sign := GenerateSign(reqBody, "j4gqNRcpTDJr50AP2xd9obKWZIKWbeo9")
+
+	params := url.Values{}
+	params.Set("merchantId", "322338")
+	params.Set("sign", sign)
+
+	fullURL := fmt.Sprintf("%s?%s", baseURL, params.Encode())
+
+	req, err := http.NewRequest("GET", fullURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-Language", "zh_CN")
+
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer func(Body io.ReadCloser) {
+		errTwo := Body.Close()
+		if errTwo != nil {
+
+		}
+	}(resp.Body)
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	//fmt.Println("响应报文:", string(body))
+
+	var result CardProductListResponse
+	err = json.Unmarshal(body, &result)
+	if err != nil {
+		fmt.Println("JSON 解析失败:", err)
+		return nil, err
+	}
+
+	//fmt.Println(result)
+
+	return &result, nil
 }
