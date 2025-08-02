@@ -124,7 +124,6 @@ func NewUserUseCase(repo UserRepo, tx Transaction, logger log.Logger) *UserUseCa
 	}
 }
 
-// todo
 func (uuc *UserUseCase) GetUserById(userId uint64) (*pb.GetUserReply, error) {
 	var (
 		user                   *User
@@ -166,10 +165,8 @@ func (uuc *UserUseCase) GetUserById(userId uint64) (*pb.GetUserReply, error) {
 	if "no" == user.CardOrderId {
 		cardStatus = 0
 	} else {
-		cardStatus = 1
 		if "no" == user.CardNumber {
-			// todo 请求api，跟据orderid，获取卡片信息orderNum，并写回数据库
-
+			cardStatus = 1
 		} else {
 			cardStatus = 2
 		}
