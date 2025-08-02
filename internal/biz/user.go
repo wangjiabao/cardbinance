@@ -1099,10 +1099,10 @@ func UpdateCardholderRequest(productId uint64, user *User) (*CreateCardholderRes
 	baseURL := "http://120.79.173.55:9102/prod-api/vcc/api/v1/cards/holders/update"
 
 	reqBody := map[string]interface{}{
-		"holderId":    user.CardUserId,
-		"productId":   productId,
-		"merchantId":  "322338",
-		"email":       user.Email,
+		"holderId":   user.CardUserId,
+		"productId":  productId,
+		"merchantId": "322338",
+		//"email":       user.Email,
 		"firstName":   user.FirstName,
 		"lastName":    user.LastName,
 		"birthDate":   user.BirthDate,
