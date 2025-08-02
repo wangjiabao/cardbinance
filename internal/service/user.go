@@ -502,6 +502,59 @@ func (u *UserService) Withdraw(ctx context.Context, req *pb.WithdrawRequest) (*p
 	return u.uuc.Withdraw(ctx, req, userId)
 }
 
+func (u *UserService) LookCard(ctx context.Context, req *pb.LookCardRequest) (*pb.LookCardReply, error) {
+	// 在上下文 context 中取出 claims 对象
+	var (
+		err    error
+		userId uint64
+	)
+
+	if claims, ok := jwt.FromContext(ctx); ok {
+		c := claims.(jwt2.MapClaims)
+		if c["UserId"] == nil {
+			return &pb.LookCardReply{
+				Status: "无效TOKEN",
+			}, nil
+		}
+
+		userId = uint64(c["UserId"].(float64))
+	}
+
+	var (
+		user *biz.User
+	)
+	user, err = u.uuc.GetUserDataById(userId)
+	if nil != err {
+		return &pb.LookCardReply{
+			Status: "无效TOKEN",
+		}, nil
+	}
+
+	if 1 == user.IsDelete {
+		return &pb.LookCardReply{
+			Status: "用户已删除",
+		}, nil
+	}
+
+	var (
+		res             bool
+		addressFromSign string
+	)
+	if 10 >= len(req.SendBody.Sign) {
+		return &pb.LookCardReply{
+			Status: "签名错误",
+		}, nil
+	}
+	res, addressFromSign = verifySig(req.SendBody.Sign, []byte(user.Address))
+	if !res || addressFromSign != user.Address {
+		return &pb.LookCardReply{
+			Status: "签名错误",
+		}, nil
+	}
+
+	return u.uuc.LookCard(ctx, req, userId)
+}
+
 func addressCheck(addressParam string) (bool, error) {
 	re := regexp.MustCompile("^0x[0-9a-fA-F]{40}$")
 	if !re.MatchString(addressParam) {

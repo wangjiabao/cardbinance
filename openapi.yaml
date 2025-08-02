@@ -104,6 +104,31 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /api/app_server/look_card:
+        post:
+            tags:
+                - User
+            description: 开卡
+            operationId: User_LookCard
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/LookCardRequest_SendBody'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/LookCardReply'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /api/app_server/open_card:
         post:
             tags:
@@ -361,6 +386,24 @@ components:
                     description: The type of the serialized message.
             additionalProperties: true
             description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message.
+        LookCardReply:
+            type: object
+            properties:
+                status:
+                    type: string
+                cardNumber:
+                    type: string
+                pin:
+                    type: string
+                expire:
+                    type: string
+                cvv:
+                    type: string
+        LookCardRequest_SendBody:
+            type: object
+            properties:
+                sign:
+                    type: string
         OpenCardReply:
             type: object
             properties:

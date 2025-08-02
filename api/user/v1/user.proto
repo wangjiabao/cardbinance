@@ -59,6 +59,14 @@ service User {
 		};
 	};
 
+	// 开卡
+	rpc LookCard (LookCardRequest) returns (LookCardReply) {
+		option (google.api.http) = {
+			post: "/api/app_server/look_card"
+			body: "send_body"
+		};
+	};
+
 	// 划转
 	rpc AmountToCard (AmountToCardRequest) returns (AmountToCardReply) {
 		option (google.api.http) = {
@@ -171,6 +179,22 @@ message OpenCardRequest {
 
 message OpenCardReply {
 	string status = 1;
+}
+
+message LookCardRequest {
+	message SendBody {
+		string sign = 1;
+	}
+
+	SendBody send_body = 1;
+}
+
+message LookCardReply {
+	string status = 1;
+	string cardNumber = 2; // 卡号
+	string pin = 3; // pin
+	string expire = 4;// 有效期
+	string cvv = 5; // cvv
 }
 
 message AmountToCardRequest {

@@ -183,6 +183,9 @@ func (u *UserRepo) GetUserById(userId uint64) (*biz.User, error) {
 		CardOrderId:   user.CardOrderId,
 		CreatedAt:     user.CreatedAt,
 		UpdatedAt:     user.UpdatedAt,
+		CardUserId:    user.CardUserId,
+		ProductId:     user.ProductId,
+		MaxCardQuota:  user.MaxCardQuota,
 	}, nil
 }
 
