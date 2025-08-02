@@ -642,7 +642,8 @@ func (uuc *UserUseCase) OpenCard(ctx context.Context, req *pb.OpenCardRequest, u
 		var (
 			resCreatCardholder *CreateCardholderResponse
 		)
-		resCreatCardholder, err = CreateCardholderRequest(productIdUseInt64, &User{
+		resCreatCardholder, err = UpdateCardholderRequest(productIdUseInt64, &User{
+			CardUserId:  HolderID,
 			FirstName:   req.SendBody.FirstName,
 			LastName:    req.SendBody.LastName,
 			Email:       req.SendBody.Email,
