@@ -38,6 +38,7 @@ type User struct {
 	CardUserId    string    `gorm:"type:varchar(45);not null;default:'0'"`
 	CreatedAt     time.Time `gorm:"type:datetime;not null"`
 	UpdatedAt     time.Time `gorm:"type:datetime;not null"`
+	UserCount     uint64    `gorm:"type:int"`
 }
 
 type UserRecommend struct {
@@ -186,6 +187,8 @@ func (u *UserRepo) GetUserById(userId uint64) (*biz.User, error) {
 		CardUserId:    user.CardUserId,
 		ProductId:     user.ProductId,
 		MaxCardQuota:  user.MaxCardQuota,
+		Email:         user.Email,
+		UserCount:     user.UserCount,
 	}, nil
 }
 
@@ -382,6 +385,7 @@ func (u *UserRepo) CreateCard(ctx context.Context, userId uint64, user *biz.User
 	res := u.data.DB(ctx).Table("user").Where("id=?", userId).Where("amount>=?", user.Amount).Where("card_order_id=?", "no").
 		Updates(map[string]interface{}{
 			"amount":         gorm.Expr("amount - ?", user.Amount),
+			"user_count":     gorm.Expr("user_count + ?", 1),
 			"card_order_id":  "do",
 			"first_name":     user.FirstName,
 			"last_name":      user.LastName,
