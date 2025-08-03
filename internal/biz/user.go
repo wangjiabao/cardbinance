@@ -316,70 +316,71 @@ type Pagination struct {
 }
 
 func (uuc *UserUseCase) OrderList(ctx context.Context, req *pb.OrderListRequest, userId uint64) (*pb.OrderListReply, error) {
-	var (
-		user   *User
-		err    error
-		cardId uint64
-	)
 	res := make([]*pb.OrderListReply_List, 0)
 
-	user, err = uuc.repo.GetUserById(userId)
-	if nil == user || nil != err {
-		return &pb.OrderListReply{Status: "查询错误", Count: 0,
-			List: res,
-		}, nil
-	}
-
-	if 5 > len(user.Card) {
-		return &pb.OrderListReply{Status: "ok", Count: 0,
-			List: res,
-		}, nil
-	}
-
-	if 5 > len(user.CardNumber) {
-		return &pb.OrderListReply{Status: "ok", Count: 0,
-			List: res,
-		}, nil
-	}
-
-	cardId, err = strconv.ParseUint(user.Card, 10, 64)
-	if err != nil {
-		return &pb.OrderListReply{Status: "查询错误", Count: 0,
-			List: res,
-		}, nil
-	}
-
-	var (
-		resGet *CardTransactionListResponse
-	)
-	resGet, err = GetCardTransactionList(cardId, req.Page, 20)
-	if err != nil {
-		return &pb.OrderListReply{Status: "查询错误", Count: 0,
-			List: res,
-		}, nil
-	}
-
-	if 200 != resGet.Code || 0 >= resGet.Total {
-		return &pb.OrderListReply{
-			Status: "ok",
-			Count:  0,
-			List:   res,
-		}, nil
-	}
-
-	for _, v := range resGet.Rows {
-		fmt.Println(v)
-		res = append(res, &pb.OrderListReply_List{
-			//Timestamp:               v.Timestamp,
-			//Status:                  v.Status,
-			//TradeAmount:             v.TradeAmount,
-			//ActualTransactionAmount: v.ActualTransactionAmount,
-			//ServiceFee:              "",
-			//ChannelFee:              "",
-			//TradeDescription:        "",
-			//CurrentBalance:          "",
-		})
-	}
+	//var (
+	//	user   *User
+	//	err    error
+	//	cardId uint64
+	//)
+	//
+	//user, err = uuc.repo.GetUserById(userId)
+	//if nil == user || nil != err {
+	//	return &pb.OrderListReply{Status: "查询错误", Count: 0,
+	//		List: res,
+	//	}, nil
+	//}
+	//
+	//if 5 > len(user.Card) {
+	//	return &pb.OrderListReply{Status: "ok", Count: 0,
+	//		List: res,
+	//	}, nil
+	//}
+	//
+	//if 5 > len(user.CardNumber) {
+	//	return &pb.OrderListReply{Status: "ok", Count: 0,
+	//		List: res,
+	//	}, nil
+	//}
+	//
+	//cardId, err = strconv.ParseUint(user.Card, 10, 64)
+	//if err != nil {
+	//	return &pb.OrderListReply{Status: "查询错误", Count: 0,
+	//		List: res,
+	//	}, nil
+	//}
+	//
+	//var (
+	//	resGet *CardTransactionListResponse
+	//)
+	//resGet, err = GetCardTransactionList(cardId, req.Page, 20)
+	//if err != nil {
+	//	return &pb.OrderListReply{Status: "查询错误", Count: 0,
+	//		List: res,
+	//	}, nil
+	//}
+	//
+	//if 200 != resGet.Code || 0 >= resGet.Total {
+	//	return &pb.OrderListReply{
+	//		Status: "ok",
+	//		Count:  0,
+	//		List:   res,
+	//	}, nil
+	//}
+	//
+	//for _, v := range resGet.Rows {
+	//	fmt.Println(v)
+	//	res = append(res, &pb.OrderListReply_List{
+	//		//Timestamp:               v.Timestamp,
+	//		//Status:                  v.Status,
+	//		//TradeAmount:             v.TradeAmount,
+	//		//ActualTransactionAmount: v.ActualTransactionAmount,
+	//		//ServiceFee:              "",
+	//		//ChannelFee:              "",
+	//		//TradeDescription:        "",
+	//		//CurrentBalance:          "",
+	//	})
+	//}
 
 	return &pb.OrderListReply{
 		Status: "ok",
