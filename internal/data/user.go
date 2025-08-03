@@ -189,6 +189,9 @@ func (u *UserRepo) GetUserById(userId uint64) (*biz.User, error) {
 		MaxCardQuota:  user.MaxCardQuota,
 		Email:         user.Email,
 		UserCount:     user.UserCount,
+		Country:       user.Country,
+		CountryCode:   user.CountryCode,
+		Phone:         user.Phone,
 	}, nil
 }
 
@@ -544,6 +547,38 @@ func (u *UserRepo) CreateCardRecommend(ctx context.Context, userId uint64, amoun
 	reward.One = vip
 	reward.Reason = 6 // 给我分红的理由
 	reward.Address = address
+	resInsert := u.data.DB(ctx).Table("reward").Create(&reward)
+	if resInsert.Error != nil || 0 >= resInsert.RowsAffected {
+		return errors.New(500, "CREATE_LOCATION_ERROR", "信息创建失败")
+	}
+
+	return nil
+}
+
+// AmountToCard .
+func (u *UserRepo) AmountToCard(ctx context.Context, userId uint64, amount float64) error {
+	res := u.data.DB(ctx).Table("user").Where("id=?", userId).Where("amount>=?", amount).
+		Updates(map[string]interface{}{
+			"amount":     gorm.Expr("amount - ?", amount),
+			"updated_at": time.Now().Format("2006-01-02 15:04:05"),
+		})
+	if res.Error != nil || 0 >= res.RowsAffected {
+		return errors.New(500, "UPDATE_USER_ERROR", "用户信息修改失败")
+	}
+
+	return nil
+}
+
+// AmountToCardReward .
+func (u *UserRepo) AmountToCardReward(ctx context.Context, userId uint64, amount float64, orderId string) error {
+	var (
+		reward Reward
+	)
+
+	reward.UserId = userId
+	reward.Amount = amount
+	reward.Reason = 4 // 给我分红的理由
+	reward.Address = orderId
 	resInsert := u.data.DB(ctx).Table("reward").Create(&reward)
 	if resInsert.Error != nil || 0 >= resInsert.RowsAffected {
 		return errors.New(500, "CREATE_LOCATION_ERROR", "信息创建失败")

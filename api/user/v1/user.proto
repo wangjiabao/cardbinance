@@ -195,6 +195,10 @@ message LookCardReply {
 	string pin = 3; // pin
 	string expire = 4;// 有效期
 	string cvv = 5; // cvv
+	string email = 6; // 邮箱
+	string phone = 7; // 手机
+	string country = 8; // 国家
+	string countryCode = 9; // 国家代码
 }
 
 message AmountToCardRequest {

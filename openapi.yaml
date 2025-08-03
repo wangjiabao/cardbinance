@@ -399,6 +399,14 @@ components:
                     type: string
                 cvv:
                     type: string
+                email:
+                    type: string
+                phone:
+                    type: string
+                country:
+                    type: string
+                countryCode:
+                    type: string
         LookCardRequest_SendBody:
             type: object
             properties:

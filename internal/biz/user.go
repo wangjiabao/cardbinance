@@ -104,6 +104,8 @@ type UserRepo interface {
 	GetAllUsers() ([]*User, error)
 	UpdateCard(ctx context.Context, userId uint64, cardOrderId, card string) error
 	CreateCardRecommend(ctx context.Context, userId uint64, amount float64, vip uint64, address string) error
+	AmountToCard(ctx context.Context, userId uint64, amount float64) error
+	AmountToCardReward(ctx context.Context, userId uint64, amount float64, orderId string) error
 	AmountTo(ctx context.Context, userId, toUserId uint64, toAddress string, amount float64) error
 	Withdraw(ctx context.Context, userId uint64, amount, amountRel float64, address string) error
 	GetUserRewardByUserIdPage(ctx context.Context, b *Pagination, userId uint64, reason uint64) ([]*Reward, error, int64)
@@ -163,6 +165,9 @@ func (uuc *UserUseCase) GetUserById(userId uint64) (*pb.GetUserReply, error) {
 	}
 
 	cardStatus := uint64(0)
+	var (
+		cardAmount string
+	)
 	if "no" == user.CardOrderId {
 		cardStatus = 0
 	} else {
@@ -170,6 +175,18 @@ func (uuc *UserUseCase) GetUserById(userId uint64) (*pb.GetUserReply, error) {
 			cardStatus = 1
 		} else {
 			cardStatus = 2
+			// 查询状态。成功分红
+			var (
+				resCard *CardInfoResponse
+			)
+			resCard, err = GetCardInfoRequestWithSign(user.Card)
+			if nil == resCard || 200 != resCard.Code || err != nil {
+
+			} else {
+				if "ACTIVE" == resCard.Data.CardStatus {
+					cardAmount = resCard.Data.Balance
+				}
+			}
 		}
 	}
 
@@ -181,7 +198,7 @@ func (uuc *UserUseCase) GetUserById(userId uint64) (*pb.GetUserReply, error) {
 		Vip:              user.Vip,
 		CardNum:          user.CardNumber,
 		CardStatus:       cardStatus,
-		CardAmount:       fmt.Sprintf("%.2f", user.CardAmount),
+		CardAmount:       cardAmount,
 		RecommendAddress: myUserRecommendAddress,
 	}, nil
 }
@@ -298,13 +315,76 @@ type Pagination struct {
 	PageSize int
 }
 
-// todo
 func (uuc *UserUseCase) OrderList(ctx context.Context, req *pb.OrderListRequest, userId uint64) (*pb.OrderListReply, error) {
+	var (
+		user   *User
+		err    error
+		cardId uint64
+	)
+	res := make([]*pb.OrderListReply_List, 0)
+
+	user, err = uuc.repo.GetUserById(userId)
+	if nil == user || nil != err {
+		return &pb.OrderListReply{Status: "查询错误", Count: 0,
+			List: res,
+		}, nil
+	}
+
+	if 5 > len(user.Card) {
+		return &pb.OrderListReply{Status: "ok", Count: 0,
+			List: res,
+		}, nil
+	}
+
+	if 5 > len(user.CardNumber) {
+		return &pb.OrderListReply{Status: "ok", Count: 0,
+			List: res,
+		}, nil
+	}
+
+	cardId, err = strconv.ParseUint(user.Card, 10, 64)
+	if err != nil {
+		return &pb.OrderListReply{Status: "查询错误", Count: 0,
+			List: res,
+		}, nil
+	}
+
+	var (
+		resGet *CardTransactionListResponse
+	)
+	resGet, err = GetCardTransactionList(cardId, req.Page, 20)
+	if err != nil {
+		return &pb.OrderListReply{Status: "查询错误", Count: 0,
+			List: res,
+		}, nil
+	}
+
+	if 200 != resGet.Code || 0 >= resGet.Total {
+		return &pb.OrderListReply{
+			Status: "ok",
+			Count:  0,
+			List:   res,
+		}, nil
+	}
+
+	for _, v := range resGet.Rows {
+		fmt.Println(v)
+		res = append(res, &pb.OrderListReply_List{
+			//Timestamp:               v.Timestamp,
+			//Status:                  v.Status,
+			//TradeAmount:             v.TradeAmount,
+			//ActualTransactionAmount: v.ActualTransactionAmount,
+			//ServiceFee:              "",
+			//ChannelFee:              "",
+			//TradeDescription:        "",
+			//CurrentBalance:          "",
+		})
+	}
 
 	return &pb.OrderListReply{
 		Status: "ok",
 		Count:  0,
-		List:   nil,
+		List:   res,
 	}, nil
 }
 
@@ -810,20 +890,111 @@ func (uuc *UserUseCase) OpenCard(ctx context.Context, req *pb.OpenCardRequest, u
 	}, nil
 }
 
-// todo
+// todo 后台监控订单状态退款
 func (uuc *UserUseCase) AmountToCard(ctx context.Context, req *pb.AmountToCardRequest, userId uint64) (*pb.AmountToCardReply, error) {
 	lockAmount.Lock()
 	defer lockAmount.Unlock()
+
+	var (
+		user *User
+		err  error
+	)
+	user, err = uuc.repo.GetUserById(userId)
+	if nil == user || nil != err {
+		return &pb.AmountToCardReply{Status: "用户不存在"}, nil
+	}
+
+	if req.SendBody.Amount > uint64(user.Amount) {
+		return &pb.AmountToCardReply{Status: "账号余额不足"}, nil
+	}
+
+	if 100 > req.SendBody.Amount {
+		return &pb.AmountToCardReply{Status: "划转最少100u"}, nil
+	}
+
+	if 5 >= len(user.CardNumber) {
+		return &pb.AmountToCardReply{Status: "无卡片记录"}, nil
+	}
+
+	if 5 >= len(user.Card) {
+		return &pb.AmountToCardReply{Status: "无卡片记录"}, nil
+	}
+
+	if err = uuc.tx.ExecTx(ctx, func(ctx context.Context) error { // 事务
+		err = uuc.repo.AmountToCard(ctx, userId, float64(req.SendBody.Amount))
+		if nil != err {
+			return err
+		}
+
+		return nil
+	}); nil != err {
+		fmt.Println(err, "划转写入mysql错误", user)
+		return &pb.AmountToCardReply{
+			Status: "划转错误，联系管理员",
+		}, nil
+	}
+
+	// 划转
+	var (
+		cardRes *CardRechargeResponse
+	)
+	cardRes, err = RechargeCard(user.Card, uint64(req.SendBody.Amount))
+	if nil != err || nil == cardRes || 200 != cardRes.Code {
+		return &pb.AmountToCardReply{Status: "划转失败"}, nil
+	}
+
+	if "PROCESSING" != cardRes.Data.OrderStatus && "SUCCESS" != cardRes.Data.OrderStatus {
+		return &pb.AmountToCardReply{
+			Status: "创建订单失败，联系管理员",
+		}, nil
+	}
+
+	if err = uuc.tx.ExecTx(ctx, func(ctx context.Context) error { // 事务
+		err = uuc.repo.AmountToCardReward(ctx, userId, float64(req.SendBody.Amount), cardRes.Data.CardOrderID)
+		if nil != err {
+			return err
+		}
+
+		return nil
+	}); nil != err {
+		fmt.Println(err, "划转写入mysql错误2", user)
+		return &pb.AmountToCardReply{
+			Status: "划转错误2，联系管理员",
+		}, nil
+	}
 
 	return &pb.AmountToCardReply{
 		Status: "ok",
 	}, nil
 }
 
-// todo
 func (uuc *UserUseCase) LookCard(ctx context.Context, req *pb.LookCardRequest, userId uint64) (*pb.LookCardReply, error) {
+	var (
+		user    *User
+		err     error
+		carInfo *CardSensitiveResponse
+	)
+	user, err = uuc.repo.GetUserById(userId)
+	if nil == user || nil != err {
+		return &pb.LookCardReply{Status: "用户不存在"}, nil
+	}
 
-	return nil, nil
+	carInfo, err = GetCardSensitiveInfo(user.Card)
+	if nil != err || nil == carInfo || 200 != carInfo.Code {
+		return &pb.LookCardReply{Status: "获取数据失败"}, nil
+	}
+
+	return &pb.LookCardReply{
+		Status:      "ok",
+		CardNumber:  carInfo.Data.Pan,
+		Pin:         carInfo.Data.Pin,
+		Expire:      carInfo.Data.Expire,
+		Cvv:         carInfo.Data.CVV,
+		Email:       user.Email,
+		Phone:       user.Phone,
+		Country:     user.Country,
+		CountryCode: user.CountryCode,
+	}, nil
 }
 
 func (uuc *UserUseCase) AmountTo(ctx context.Context, req *pb.AmountToRequest, userId uint64) (*pb.AmountToReply, error) {
@@ -861,9 +1032,9 @@ func (uuc *UserUseCase) AmountTo(ctx context.Context, req *pb.AmountToRequest, u
 
 		return nil
 	}); nil != err {
-		fmt.Println(err, "开卡写入mysql错误", user)
+		fmt.Println(err, "划转写入mysql错误", user)
 		return &pb.AmountToReply{
-			Status: "开卡错误，联系管理员",
+			Status: "划转错误，联系管理员",
 		}, nil
 	}
 
@@ -1271,6 +1442,257 @@ func GetCardProducts() (*CardProductListResponse, error) {
 	}
 
 	//fmt.Println(result)
+
+	return &result, nil
+}
+
+type CardSensitiveResponse struct {
+	Code int    `json:"code"`
+	Msg  string `json:"msg"`
+	Data struct {
+		Pan    string `json:"pan"`
+		Pin    string `json:"pin"`
+		CVV    string `json:"cvv"`
+		Expire string `json:"expire"`
+	} `json:"data"`
+}
+
+func GetCardSensitiveInfo(cardId string) (*CardSensitiveResponse, error) {
+	//baseUrl := "https://www.ispay.com/prod-api/vcc/api/v1/cards/sensitive"
+	baseUrl := "http://120.79.173.55:9102/prod-api/vcc/api/v1/cards/sensitive"
+
+	reqBody := map[string]interface{}{
+		"merchantId": "322338",
+		"cardId":     cardId,
+	}
+
+	sign := GenerateSign(reqBody, "j4gqNRcpTDJr50AP2xd9obKWZIKWbeo9")
+	reqBody["sign"] = sign
+
+	jsonData, _ := json.Marshal(reqBody)
+	req, _ := http.NewRequest("POST", baseUrl, bytes.NewBuffer(jsonData))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Language", "zh_CN")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer func(Body io.ReadCloser) {
+		errTwo := Body.Close()
+		if errTwo != nil {
+
+		}
+	}(resp.Body)
+
+	body, _ := ioutil.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("HTTP请求失败: %s", string(body))
+	}
+
+	//fmt.Println("响应报文:", string(body))
+
+	var result CardSensitiveResponse
+	if err = json.Unmarshal(body, &result); err != nil {
+		fmt.Println("敏感信息 JSON 解析失败:", err)
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+type CardRechargeResponse struct {
+	Code int    `json:"code"`
+	Msg  string `json:"msg"`
+	Data struct {
+		CardID       string `json:"cardId"`
+		CardOrderID  string `json:"cardOrderId"`
+		OrderType    string `json:"orderType"`
+		CardCurrency string `json:"cardCurrency"`
+		CreateTime   string `json:"createTime"`
+		UpdateTime   string `json:"updateTime"`
+		CompleteTime string `json:"completeTime"`
+		OrderStatus  string `json:"orderStatus"`
+	} `json:"data"`
+}
+
+func RechargeCard(cardId string, rechargeAmount uint64) (*CardRechargeResponse, error) {
+	//baseUrl := "https://www.ispay.com/prod-api/vcc/api/v1/cards/recharge"
+	baseUrl := "http://120.79.173.55:9102/prod-api/vcc/api/v1/cards/recharge"
+
+	reqBody := map[string]interface{}{
+		"merchantId":     "322338",
+		"cardId":         cardId,
+		"rechargeAmount": rechargeAmount,
+	}
+
+	sign := GenerateSign(reqBody, "j4gqNRcpTDJr50AP2xd9obKWZIKWbeo9")
+	reqBody["sign"] = sign
+
+	jsonData, _ := json.Marshal(reqBody)
+	req, _ := http.NewRequest("POST", baseUrl, bytes.NewBuffer(jsonData))
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, _ := ioutil.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("HTTP请求失败: %s", string(body))
+	}
+
+	fmt.Println("响应报文:", string(body))
+
+	var result CardRechargeResponse
+	if err = json.Unmarshal(body, &result); err != nil {
+		fmt.Println("充值响应解析失败:", err)
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+type CardTransactionListResponse struct {
+	Code  int    `json:"code"`
+	Msg   string `json:"msg"`
+	Total int    `json:"total"`
+	Rows  []struct {
+		ID                      int64       `json:"id"`
+		Pan                     string      `json:"pan"`
+		TradeNo                 string      `json:"tradeNo"`
+		Type                    string      `json:"type"`
+		Status                  string      `json:"status"`
+		TradeAmount             float64     `json:"tradeAmount"`
+		TradeCurrency           string      `json:"tradeCurrency"`
+		Timestamp               string      `json:"timestamp"`
+		ServiceFee              float64     `json:"serviceFee"`
+		ActualTransactionAmount float64     `json:"actualTransactionAmount"`
+		CurrentBalance          float64     `json:"currentBalance"`
+		CreateTime              string      `json:"createTime"`
+		TradeDescription        string      `json:"tradeDescription"`
+		MerchantData            interface{} `json:"merchantData"`
+	} `json:"rows"`
+}
+
+func GetCardTransactionList(cardId, pageNum, pageSize uint64) (*CardTransactionListResponse, error) {
+	//baseUrl := "https://www.ispay.com/prod-api/vcc/api/v1/cards/transactions/list"
+	baseUrl := "http://120.79.173.55:9102/prod-api/vcc/api/v1/cards/transactions/list"
+
+	// 构造请求参数 map（用于签名和拼接）
+	reqParams := map[string]interface{}{
+		"transactionQueryBo.merchantId": "322338",
+		"transactionQueryBo.cardId":     cardId,
+		"apiPageQuery.merchantId":       "322338",
+		"apiPageQuery.pageSize":         pageSize,
+		"apiPageQuery.pageNum":          pageNum,
+		"apiPageQuery.orderByColumn":    "createTime",
+		"apiPageQuery.isAsc":            "desc",
+	}
+
+	// 签名
+	sign := GenerateSign(reqParams, "j4gqNRcpTDJr50AP2xd9obKWZIKWbeo9")
+	reqParams["sign"] = sign
+
+	// 拼接成 query string
+	query := url.Values{}
+	for k, v := range reqParams {
+		query.Set(k, fmt.Sprintf("%v", v))
+	}
+
+	fullUrl := baseUrl + "?" + query.Encode()
+
+	// 发 GET 请求
+	req, _ := http.NewRequest("GET", fullUrl, nil)
+	req.Header.Set("Content-Language", "zh_CN")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer func(Body io.ReadCloser) {
+		errTwo := Body.Close()
+		if errTwo != nil {
+
+		}
+	}(resp.Body)
+
+	body, _ := ioutil.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("HTTP请求失败: %s", string(body))
+	}
+
+	fmt.Println("响应报文:", string(body))
+
+	var result CardTransactionListResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		fmt.Println("JSON 解析失败:", err)
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+type CardInfoResponse struct {
+	Code int    `json:"code"`
+	Msg  string `json:"msg"`
+	Data struct {
+		CardID     string `json:"cardId"`
+		Pan        string `json:"pan"`
+		CardStatus string `json:"cardStatus"`
+		Balance    string `json:"balance"`
+		Holder     struct {
+			HolderID string `json:"holderId"`
+		} `json:"holder"`
+	} `json:"data"`
+}
+
+func GetCardInfoRequestWithSign(cardId string) (*CardInfoResponse, error) {
+	baseUrl := "http://120.79.173.55:9102/prod-api/vcc/api/v1/cards/info"
+	//baseUrl := "https://www.ispay.com/prod-api/vcc/api/v1/cards/info"
+
+	reqBody := map[string]interface{}{
+		"merchantId": "322338",
+		"cardId":     cardId, // 如果需要传 cardId，根据实际接口文档添加
+	}
+
+	sign := GenerateSign(reqBody, "j4gqNRcpTDJr50AP2xd9obKWZIKWbeo9")
+	reqBody["sign"] = sign
+
+	jsonData, _ := json.Marshal(reqBody)
+	req, _ := http.NewRequest("POST", baseUrl, bytes.NewBuffer(jsonData))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Language", "zh_CN")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer func(Body io.ReadCloser) {
+		errTwo := Body.Close()
+		if errTwo != nil {
+
+		}
+	}(resp.Body)
+
+	body, _ := ioutil.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("request failed: %s", string(body))
+	}
+
+	fmt.Println("响应报文:", string(body))
+
+	var result CardInfoResponse
+	if err = json.Unmarshal(body, &result); err != nil {
+		fmt.Println("卡信息 JSON 解析失败:", err)
+		return nil, err
+	}
 
 	return &result, nil
 }
