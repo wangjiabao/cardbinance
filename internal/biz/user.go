@@ -1142,7 +1142,7 @@ func GenerateSign(params map[string]interface{}, signKey string) string {
 	}
 
 	signString := sb.String()
-	fmt.Println("md5前字符串", signString)
+	//fmt.Println("md5前字符串", signString)
 
 	// 3. 进行 MD5 加密
 	hash := md5.Sum([]byte(signString))
@@ -1687,7 +1687,7 @@ func GetCardInfoRequestWithSign(cardId string) (*CardInfoResponse, error) {
 		return nil, fmt.Errorf("request failed: %s", string(body))
 	}
 
-	fmt.Println("响应报文:", string(body))
+	//fmt.Println("响应报文:", string(body))
 
 	var result CardInfoResponse
 	if err = json.Unmarshal(body, &result); err != nil {
