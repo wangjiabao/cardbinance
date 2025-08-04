@@ -170,21 +170,25 @@ func (u *UserService) EthAuthorize(ctx context.Context, req *pb.EthAuthorizeRequ
 
 	var (
 		addressFromSign string
-		content         = []byte(userAddress) // todo 签名内容修改
 	)
 
-	// todo
-	//var (
-	//	contentStr string
-	//)
-	//contentStr, err = u.uuc.GetAddressNonce(ctx, userAddress)
-	//if nil != err {
-	//	return &pb.EthAuthorizeReply{
-	//		Token:  "",
-	//		Status: "错误",
-	//	}, nil
-	//}
-	//content = []byte(contentStr)
+	var (
+		contentStr string
+	)
+	contentStr, err = u.uuc.GetAddressNonce(ctx, userAddress)
+	if nil != err {
+		return &pb.EthAuthorizeReply{
+			Token:  "",
+			Status: "错误",
+		}, nil
+	}
+	if 0 >= len(contentStr) {
+		return &pb.EthAuthorizeReply{
+			Token:  "",
+			Status: "错误nonce",
+		}, nil
+	}
+	content := []byte(contentStr)
 
 	res, addressFromSign = verifySig(req.SendBody.Sign, content)
 	if !res || addressFromSign != userAddress {
@@ -280,7 +284,24 @@ func (u *UserService) SetVip(ctx context.Context, req *pb.SetVipRequest) (*pb.Se
 			Status: "签名错误",
 		}, nil
 	}
-	res, addressFromSign = verifySig(req.SendBody.Sign, []byte(user.Address))
+
+	var (
+		contentStr string
+	)
+	contentStr, err = u.uuc.GetAddressNonce(ctx, user.Address)
+	if nil != err {
+		return &pb.SetVipReply{
+			Status: "错误",
+		}, nil
+	}
+	if 0 >= len(contentStr) {
+		return &pb.SetVipReply{
+			Status: "错误nonce",
+		}, nil
+	}
+	content := []byte(contentStr)
+
+	res, addressFromSign = verifySig(req.SendBody.Sign, content)
 	if !res || addressFromSign != user.Address {
 		return &pb.SetVipReply{
 			Status: "签名错误",
@@ -333,7 +354,24 @@ func (u *UserService) OpenCard(ctx context.Context, req *pb.OpenCardRequest) (*p
 			Status: "签名错误",
 		}, nil
 	}
-	res, addressFromSign = verifySig(req.SendBody.Sign, []byte(user.Address))
+
+	var (
+		contentStr string
+	)
+	contentStr, err = u.uuc.GetAddressNonce(ctx, user.Address)
+	if nil != err {
+		return &pb.OpenCardReply{
+			Status: "错误",
+		}, nil
+	}
+	if 0 >= len(contentStr) {
+		return &pb.OpenCardReply{
+			Status: "错误nonce",
+		}, nil
+	}
+	content := []byte(contentStr)
+
+	res, addressFromSign = verifySig(req.SendBody.Sign, content)
 	if !res || addressFromSign != user.Address {
 		return &pb.OpenCardReply{
 			Status: "签名错误",
@@ -386,7 +424,24 @@ func (u *UserService) AmountToCard(ctx context.Context, req *pb.AmountToCardRequ
 			Status: "签名错误",
 		}, nil
 	}
-	res, addressFromSign = verifySig(req.SendBody.Sign, []byte(user.Address))
+
+	var (
+		contentStr string
+	)
+	contentStr, err = u.uuc.GetAddressNonce(ctx, user.Address)
+	if nil != err {
+		return &pb.AmountToCardReply{
+			Status: "错误",
+		}, nil
+	}
+	if 0 >= len(contentStr) {
+		return &pb.AmountToCardReply{
+			Status: "错误nonce",
+		}, nil
+	}
+	content := []byte(contentStr)
+
+	res, addressFromSign = verifySig(req.SendBody.Sign, content)
 	if !res || addressFromSign != user.Address {
 		return &pb.AmountToCardReply{
 			Status: "签名错误",
@@ -439,7 +494,24 @@ func (u *UserService) AmountTo(ctx context.Context, req *pb.AmountToRequest) (*p
 			Status: "签名错误",
 		}, nil
 	}
-	res, addressFromSign = verifySig(req.SendBody.Sign, []byte(user.Address))
+	var (
+		contentStr string
+	)
+
+	contentStr, err = u.uuc.GetAddressNonce(ctx, user.Address)
+	if nil != err {
+		return &pb.AmountToReply{
+			Status: "错误",
+		}, nil
+	}
+	if 0 >= len(contentStr) {
+		return &pb.AmountToReply{
+			Status: "错误nonce",
+		}, nil
+	}
+	content := []byte(contentStr)
+
+	res, addressFromSign = verifySig(req.SendBody.Sign, content)
 	if !res || addressFromSign != user.Address {
 		return &pb.AmountToReply{
 			Status: "签名错误",
@@ -492,7 +564,24 @@ func (u *UserService) Withdraw(ctx context.Context, req *pb.WithdrawRequest) (*p
 			Status: "签名错误",
 		}, nil
 	}
-	res, addressFromSign = verifySig(req.SendBody.Sign, []byte(user.Address))
+	var (
+		contentStr string
+	)
+
+	contentStr, err = u.uuc.GetAddressNonce(ctx, user.Address)
+	if nil != err {
+		return &pb.WithdrawReply{
+			Status: "错误",
+		}, nil
+	}
+	if 0 >= len(contentStr) {
+		return &pb.WithdrawReply{
+			Status: "错误nonce",
+		}, nil
+	}
+	content := []byte(contentStr)
+
+	res, addressFromSign = verifySig(req.SendBody.Sign, content)
 	if !res || addressFromSign != user.Address {
 		return &pb.WithdrawReply{
 			Status: "签名错误",
@@ -545,7 +634,24 @@ func (u *UserService) LookCard(ctx context.Context, req *pb.LookCardRequest) (*p
 			Status: "签名错误",
 		}, nil
 	}
-	res, addressFromSign = verifySig(req.SendBody.Sign, []byte(user.Address))
+	var (
+		contentStr string
+	)
+
+	contentStr, err = u.uuc.GetAddressNonce(ctx, user.Address)
+	if nil != err {
+		return &pb.LookCardReply{
+			Status: "错误",
+		}, nil
+	}
+	if 0 >= len(contentStr) {
+		return &pb.LookCardReply{
+			Status: "错误nonce",
+		}, nil
+	}
+	content := []byte(contentStr)
+
+	res, addressFromSign = verifySig(req.SendBody.Sign, content)
 	if !res || addressFromSign != user.Address {
 		return &pb.LookCardReply{
 			Status: "签名错误",
