@@ -924,8 +924,12 @@ func (uuc *UserUseCase) AmountToCard(ctx context.Context, req *pb.AmountToCardRe
 		return &pb.AmountToCardReply{Status: "账号余额不足"}, nil
 	}
 
-	if 100 > req.SendBody.Amount {
-		return &pb.AmountToCardReply{Status: "划转最少100u"}, nil
+	//if 100 > req.SendBody.Amount {
+	//	return &pb.AmountToCardReply{Status: "划转最少100u"}, nil
+	//}
+
+	if 1 > req.SendBody.Amount {
+		return &pb.AmountToCardReply{Status: "划转最少1u"}, nil
 	}
 
 	if 5 >= len(user.CardNumber) {
@@ -954,7 +958,7 @@ func (uuc *UserUseCase) AmountToCard(ctx context.Context, req *pb.AmountToCardRe
 	var (
 		cardRes *CardRechargeResponse
 	)
-	cardRes, err = RechargeCard(user.Card, uint64(req.SendBody.Amount))
+	cardRes, err = RechargeCard(user.Card, req.SendBody.Amount)
 	if nil != err || nil == cardRes || 200 != cardRes.Code {
 		return &pb.AmountToCardReply{Status: "划转失败"}, nil
 	}
