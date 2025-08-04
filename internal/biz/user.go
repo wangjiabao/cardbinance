@@ -928,8 +928,8 @@ func (uuc *UserUseCase) AmountToCard(ctx context.Context, req *pb.AmountToCardRe
 	//	return &pb.AmountToCardReply{Status: "划转最少100u"}, nil
 	//}
 
-	if 1 > req.SendBody.Amount {
-		return &pb.AmountToCardReply{Status: "划转最少1u"}, nil
+	if 20 > req.SendBody.Amount {
+		return &pb.AmountToCardReply{Status: "划转最少20u"}, nil
 	}
 
 	if 5 >= len(user.CardNumber) {
