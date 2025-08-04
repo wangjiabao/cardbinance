@@ -383,7 +383,7 @@ func (uuc *UserUseCase) OrderList(ctx context.Context, req *pb.OrderListRequest,
 
 	return &pb.OrderListReply{
 		Status: "ok",
-		Count:  0,
+		Count:  resGet.Total,
 		List:   res,
 	}, nil
 }
@@ -1558,9 +1558,9 @@ func RechargeCard(cardId string, rechargeAmount uint64) (*CardRechargeResponse, 
 }
 
 type CardTransactionListResponse struct {
-	Code  int                     `json:"code"`  // 接口状态码
+	Code  uint64                  `json:"code"`  // 接口状态码
 	Msg   string                  `json:"msg"`   // 返回消息
-	Total int                     `json:"total"` // 总条数
+	Total uint64                  `json:"total"` // 总条数
 	Rows  []CardTransactionRecord `json:"rows"`  // 交易列表
 }
 
