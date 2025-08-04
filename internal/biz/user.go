@@ -906,7 +906,6 @@ func (uuc *UserUseCase) OpenCard(ctx context.Context, req *pb.OpenCardRequest, u
 	}, nil
 }
 
-// todo 后台监控订单状态退款
 func (uuc *UserUseCase) AmountToCard(ctx context.Context, req *pb.AmountToCardRequest, userId uint64) (*pb.AmountToCardReply, error) {
 	lockAmount.Lock()
 	defer lockAmount.Unlock()
