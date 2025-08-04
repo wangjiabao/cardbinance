@@ -318,69 +318,68 @@ type Pagination struct {
 func (uuc *UserUseCase) OrderList(ctx context.Context, req *pb.OrderListRequest, userId uint64) (*pb.OrderListReply, error) {
 	res := make([]*pb.OrderListReply_List, 0)
 
-	//var (
-	//	user   *User
-	//	err    error
-	//	cardId uint64
-	//)
-	//
-	//user, err = uuc.repo.GetUserById(userId)
-	//if nil == user || nil != err {
-	//	return &pb.OrderListReply{Status: "查询错误", Count: 0,
-	//		List: res,
-	//	}, nil
-	//}
-	//
-	//if 5 > len(user.Card) {
-	//	return &pb.OrderListReply{Status: "ok", Count: 0,
-	//		List: res,
-	//	}, nil
-	//}
-	//
-	//if 5 > len(user.CardNumber) {
-	//	return &pb.OrderListReply{Status: "ok", Count: 0,
-	//		List: res,
-	//	}, nil
-	//}
-	//
-	//cardId, err = strconv.ParseUint(user.Card, 10, 64)
-	//if err != nil {
-	//	return &pb.OrderListReply{Status: "查询错误", Count: 0,
-	//		List: res,
-	//	}, nil
-	//}
-	//
-	//var (
-	//	resGet *CardTransactionListResponse
-	//)
-	//resGet, err = GetCardTransactionList(cardId, req.Page, 20)
-	//if err != nil {
-	//	return &pb.OrderListReply{Status: "查询错误", Count: 0,
-	//		List: res,
-	//	}, nil
-	//}
-	//
-	//if 200 != resGet.Code || 0 >= resGet.Total {
-	//	return &pb.OrderListReply{
-	//		Status: "ok",
-	//		Count:  0,
-	//		List:   res,
-	//	}, nil
-	//}
-	//
-	//for _, v := range resGet.Rows {
-	//	fmt.Println(v)
-	//	res = append(res, &pb.OrderListReply_List{
-	//		//Timestamp:               v.Timestamp,
-	//		//Status:                  v.Status,
-	//		//TradeAmount:             v.TradeAmount,
-	//		//ActualTransactionAmount: v.ActualTransactionAmount,
-	//		//ServiceFee:              "",
-	//		//ChannelFee:              "",
-	//		//TradeDescription:        "",
-	//		//CurrentBalance:          "",
-	//	})
-	//}
+	var (
+		user   *User
+		err    error
+		cardId uint64
+	)
+
+	user, err = uuc.repo.GetUserById(userId)
+	if nil == user || nil != err {
+		return &pb.OrderListReply{Status: "查询错误", Count: 0,
+			List: res,
+		}, nil
+	}
+
+	if 5 > len(user.Card) {
+		return &pb.OrderListReply{Status: "ok", Count: 0,
+			List: res,
+		}, nil
+	}
+
+	if 5 > len(user.CardNumber) {
+		return &pb.OrderListReply{Status: "ok", Count: 0,
+			List: res,
+		}, nil
+	}
+
+	cardId, err = strconv.ParseUint(user.Card, 10, 64)
+	if err != nil {
+		return &pb.OrderListReply{Status: "查询错误", Count: 0,
+			List: res,
+		}, nil
+	}
+
+	var (
+		resGet *CardTransactionListResponse
+	)
+	resGet, err = GetCardTransactionList(cardId, req.Page, 20)
+	if err != nil {
+		return &pb.OrderListReply{Status: "查询错误", Count: 0,
+			List: res,
+		}, nil
+	}
+
+	if 200 != resGet.Code || 0 >= resGet.Total {
+		return &pb.OrderListReply{
+			Status: "ok",
+			Count:  0,
+			List:   res,
+		}, nil
+	}
+
+	for _, v := range resGet.Rows {
+		res = append(res, &pb.OrderListReply_List{
+			Timestamp:               v.Timestamp,
+			Status:                  v.Status,
+			TradeAmount:             v.TradeAmount,
+			ActualTransactionAmount: v.ActualTransactionAmount,
+			ServiceFee:              v.ServiceFee,
+			TradeDescription:        v.TradeDescription,
+			CurrentBalance:          v.CurrentBalance,
+			TraderNum:               v.TradeNo,
+		})
+	}
 
 	return &pb.OrderListReply{
 		Status: "ok",
@@ -1559,56 +1558,60 @@ func RechargeCard(cardId string, rechargeAmount uint64) (*CardRechargeResponse, 
 }
 
 type CardTransactionListResponse struct {
-	Code  int    `json:"code"`
-	Msg   string `json:"msg"`
-	Total int    `json:"total"`
-	Rows  []struct {
-		ID                      int64       `json:"id"`
-		Pan                     string      `json:"pan"`
-		TradeNo                 string      `json:"tradeNo"`
-		Type                    string      `json:"type"`
-		Status                  string      `json:"status"`
-		TradeAmount             float64     `json:"tradeAmount"`
-		TradeCurrency           string      `json:"tradeCurrency"`
-		Timestamp               string      `json:"timestamp"`
-		ServiceFee              float64     `json:"serviceFee"`
-		ActualTransactionAmount float64     `json:"actualTransactionAmount"`
-		CurrentBalance          float64     `json:"currentBalance"`
-		CreateTime              string      `json:"createTime"`
-		TradeDescription        string      `json:"tradeDescription"`
-		MerchantData            interface{} `json:"merchantData"`
-	} `json:"rows"`
+	Code  int                     `json:"code"`  // 接口状态码
+	Msg   string                  `json:"msg"`   // 返回消息
+	Total int                     `json:"total"` // 总条数
+	Rows  []CardTransactionRecord `json:"rows"`  // 交易列表
+}
+
+type CardTransactionRecord struct {
+	ID                      string                 `json:"id"`
+	Pan                     string                 `json:"pan"`
+	TradeNo                 string                 `json:"tradeNo"`
+	Type                    string                 `json:"type"`
+	Status                  string                 `json:"status"`
+	TradeAmount             string                 `json:"tradeAmount"`
+	TradeCurrency           string                 `json:"tradeCurrency"`
+	Timestamp               string                 `json:"timestamp"`
+	ServiceFee              string                 `json:"serviceFee"`
+	ActualTransactionAmount string                 `json:"actualTransactionAmount"`
+	CurrentBalance          string                 `json:"currentBalance"`
+	CreateTime              string                 `json:"createTime"`
+	TradeDescription        string                 `json:"tradeDescription"`
+	MerchantData            map[string]interface{} `json:"merchantData"` // 用 map 保证兼容性
 }
 
 func GetCardTransactionList(cardId, pageNum, pageSize uint64) (*CardTransactionListResponse, error) {
-	//baseUrl := "https://www.ispay.com/prod-api/vcc/api/v1/cards/transactions/list"
 	baseUrl := "http://120.79.173.55:9102/prod-api/vcc/api/v1/cards/transactions/list"
 
-	// 构造请求参数 map（用于签名和拼接）
+	// 1. 构造参数（全部为一级扁平字段）
 	reqParams := map[string]interface{}{
-		"transactionQueryBo.merchantId": "322338",
-		"transactionQueryBo.cardId":     cardId,
-		"apiPageQuery.merchantId":       "322338",
-		"apiPageQuery.pageSize":         pageSize,
-		"apiPageQuery.pageNum":          pageNum,
-		"apiPageQuery.orderByColumn":    "createTime",
-		"apiPageQuery.isAsc":            "desc",
+		"merchantId":    "322338",
+		"cardId":        cardId,
+		"pageSize":      pageSize,
+		"pageNum":       pageNum,
+		"orderByColumn": "createTime",
+		"isAsc":         "desc",
 	}
 
-	// 签名
+	// 2. 生成签名（假设你有此函数）
 	sign := GenerateSign(reqParams, "j4gqNRcpTDJr50AP2xd9obKWZIKWbeo9")
 	reqParams["sign"] = sign
 
-	// 拼接成 query string
+	// 3. 构造 query string
 	query := url.Values{}
 	for k, v := range reqParams {
 		query.Set(k, fmt.Sprintf("%v", v))
 	}
 
 	fullUrl := baseUrl + "?" + query.Encode()
+	//fmt.Println("请求 URL:", fullUrl)
 
-	// 发 GET 请求
-	req, _ := http.NewRequest("GET", fullUrl, nil)
+	// 4. 发起 GET 请求
+	req, err := http.NewRequest("GET", fullUrl, nil)
+	if err != nil {
+		return nil, err
+	}
 	req.Header.Set("Content-Language", "zh_CN")
 
 	client := &http.Client{}
@@ -1623,15 +1626,17 @@ func GetCardTransactionList(cardId, pageNum, pageSize uint64) (*CardTransactionL
 		}
 	}(resp.Body)
 
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, _ := io.ReadAll(resp.Body)
+
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("HTTP请求失败: %s", string(body))
+		return nil, err
 	}
 
-	fmt.Println("响应报文:", string(body))
+	//fmt.Println("响应报文:", string(body))
 
+	// 5. 解析响应
 	var result CardTransactionListResponse
-	if err := json.Unmarshal(body, &result); err != nil {
+	if err = json.Unmarshal(body, &result); err != nil {
 		fmt.Println("JSON 解析失败:", err)
 		return nil, err
 	}

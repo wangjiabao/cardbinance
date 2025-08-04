@@ -59,20 +59,20 @@ func (u *UserService) UserRecommend(ctx context.Context, req *pb.RecommendListRe
 }
 
 func (u *UserService) OrderList(ctx context.Context, req *pb.OrderListRequest) (*pb.OrderListReply, error) {
-	// 在上下文 context 中取出 claims 对象
-	var userId uint64
-	if claims, ok := jwt.FromContext(ctx); ok {
-		c := claims.(jwt2.MapClaims)
-		if c["UserId"] == nil {
-			return &pb.OrderListReply{
-				Status: "无效TOKEN",
-			}, nil
-		}
+	//// 在上下文 context 中取出 claims 对象
+	//var userId uint64
+	//if claims, ok := jwt.FromContext(ctx); ok {
+	//	c := claims.(jwt2.MapClaims)
+	//	if c["UserId"] == nil {
+	//		return &pb.OrderListReply{
+	//			Status: "无效TOKEN",
+	//		}, nil
+	//	}
+	//
+	//	userId = uint64(c["UserId"].(float64))
+	//}
 
-		userId = uint64(c["UserId"].(float64))
-	}
-
-	return u.uuc.OrderList(ctx, req, userId)
+	return u.uuc.OrderList(ctx, req, 8)
 }
 
 func (u *UserService) RewardList(ctx context.Context, req *pb.RewardListRequest) (*pb.RewardListReply, error) {

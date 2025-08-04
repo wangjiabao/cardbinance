@@ -281,12 +281,12 @@ message OrderListReply {
 	repeated List list = 3;
 	message List {
 		string timestamp = 1; // 交易完成时间
-		string status = 8; // 交易状态
+		string status = 8; // 交易状态 成功SUCCESS 失败FAILED 退款REFUNDED 处理中PROCESSING
 		string tradeAmount = 2; // 交易金额
 		string actualTransactionAmount = 6; // 实际交易金额
 		string serviceFee = 3; // 手续费
-		string channelFee = 5; // 渠道手续费
 		string tradeDescription = 4; // 交易描述
 		string currentBalance = 7; // 当前余额
+		string traderNum = 9; // 交易订单号
 	}
 }

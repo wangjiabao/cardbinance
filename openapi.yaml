@@ -466,11 +466,11 @@ components:
                     type: string
                 serviceFee:
                     type: string
-                channelFee:
-                    type: string
                 tradeDescription:
                     type: string
                 currentBalance:
+                    type: string
+                traderNum:
                     type: string
         RecommendListReply:
             type: object
