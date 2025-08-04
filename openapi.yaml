@@ -378,6 +378,9 @@ components:
                     type: string
                 recommendAddress:
                     type: string
+                withdrawRate:
+                    type: number
+                    format: double
         GoogleProtobufAny:
             type: object
             properties:

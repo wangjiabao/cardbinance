@@ -141,6 +141,7 @@ message GetUserReply {
 	uint64 cardStatus = 9; //  激活状态
 	string cardAmount = 7; // 我的卡额度
 	string recommendAddress = 8; // 我的推荐人
+	double withdrawRate = 10;
 }
 
 message RecommendListRequest {

@@ -135,7 +135,22 @@ func (uuc *UserUseCase) GetUserById(userId uint64) (*pb.GetUserReply, error) {
 		myUserRecommendUserId  uint64
 		myUserRecommendAddress string
 		err                    error
+		withdrawRate           float64
 	)
+
+	var (
+		configs []*Config
+	)
+
+	// 配置
+	configs, err = uuc.repo.GetConfigByKeys("withdraw_rate")
+	if nil != configs {
+		for _, vConfig := range configs {
+			if "withdraw_rate" == vConfig.KeyName {
+				withdrawRate, _ = strconv.ParseFloat(vConfig.Value, 10)
+			}
+		}
+	}
 
 	user, err = uuc.repo.GetUserById(userId)
 	if nil == user || nil != err {
@@ -200,6 +215,7 @@ func (uuc *UserUseCase) GetUserById(userId uint64) (*pb.GetUserReply, error) {
 		CardStatus:       cardStatus,
 		CardAmount:       cardAmount,
 		RecommendAddress: myUserRecommendAddress,
+		WithdrawRate:     withdrawRate,
 	}, nil
 }
 
