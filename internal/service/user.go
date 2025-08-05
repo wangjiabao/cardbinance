@@ -170,25 +170,26 @@ func (u *UserService) EthAuthorize(ctx context.Context, req *pb.EthAuthorizeRequ
 
 	var (
 		addressFromSign string
+		content         = []byte(userAddress)
 	)
 
-	var (
-		contentStr string
-	)
-	contentStr, err = u.uuc.GetAddressNonce(ctx, userAddress)
-	if nil != err {
-		return &pb.EthAuthorizeReply{
-			Token:  "",
-			Status: "错误",
-		}, nil
-	}
-	if 0 >= len(contentStr) {
-		return &pb.EthAuthorizeReply{
-			Token:  "",
-			Status: "错误nonce",
-		}, nil
-	}
-	content := []byte(contentStr)
+	//var (
+	//	contentStr string
+	//)
+	//contentStr, err = u.uuc.GetAddressNonce(ctx, userAddress)
+	//if nil != err {
+	//	return &pb.EthAuthorizeReply{
+	//		Token:  "",
+	//		Status: "错误",
+	//	}, nil
+	//}
+	//if 0 >= len(contentStr) {
+	//	return &pb.EthAuthorizeReply{
+	//		Token:  "",
+	//		Status: "错误nonce",
+	//	}, nil
+	//}
+	//content := []byte(contentStr)
 
 	res, addressFromSign = verifySig(req.SendBody.Sign, content)
 	if !res || addressFromSign != userAddress {
