@@ -1025,10 +1025,23 @@ func (uuc *UserUseCase) OpenCardTwo(ctx context.Context, req *pb.OpenCardRequest
 	defer lockAmount.Unlock()
 
 	var (
-		user       *User
-		err        error
+		user *User
+		err  error
+	)
+	var (
+		configs    []*Config
 		cardAmount = float64(150)
 	)
+
+	// 配置
+	configs, err = uuc.repo.GetConfigByKeys("card_two")
+	if nil != configs {
+		for _, vConfig := range configs {
+			if "card_two" == vConfig.KeyName {
+				cardAmount, _ = strconv.ParseFloat(vConfig.Value, 10)
+			}
+		}
+	}
 
 	user, err = uuc.repo.GetUserById(userId)
 	if nil == user || nil != err {
