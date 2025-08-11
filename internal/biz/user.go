@@ -680,8 +680,9 @@ func (uuc *UserUseCase) OpenCard(ctx context.Context, req *pb.OpenCardRequest, u
 	defer lockAmount.Unlock()
 
 	var (
-		user *User
-		err  error
+		user       *User
+		err        error
+		cardAmount float64
 	)
 
 	user, err = uuc.repo.GetUserById(userId)
@@ -701,8 +702,16 @@ func (uuc *UserUseCase) OpenCard(ctx context.Context, req *pb.OpenCardRequest, u
 		return &pb.OpenCardReply{Status: "已经提交开卡信息"}, nil
 	}
 
-	if 10 > uint64(user.Amount) {
-		return &pb.OpenCardReply{Status: "账号余额不足"}, nil
+	if 0 >= user.VipTwo {
+		if 10 > uint64(user.Amount) {
+			return &pb.OpenCardReply{Status: "账号余额不足10u"}, nil
+		}
+		cardAmount = 10
+	} else {
+		if 30 > uint64(user.Amount) {
+			return &pb.OpenCardReply{Status: "账号余额不足30u"}, nil
+		}
+		cardAmount = 30
 	}
 
 	if 1 > len(req.SendBody.Email) || len(req.SendBody.Email) > 99 {
@@ -894,7 +903,7 @@ func (uuc *UserUseCase) OpenCard(ctx context.Context, req *pb.OpenCardRequest, u
 
 	if err = uuc.tx.ExecTx(ctx, func(ctx context.Context) error { // 事务
 		err = uuc.repo.CreateCard(ctx, userId, &User{
-			Amount:       10,
+			Amount:       cardAmount,
 			CardUserId:   HolderID,
 			MaxCardQuota: maxCardQuotaTwo,
 			ProductId:    productIdUseTwo,
