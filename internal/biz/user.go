@@ -606,31 +606,6 @@ func (uuc *UserUseCase) SetVip(ctx context.Context, req *pb.SetVipRequest, userI
 	}
 
 	var (
-		userRecommend   *UserRecommend
-		myUserRecommend []*UserRecommend
-	)
-	// 推荐
-	userRecommend, err = uuc.repo.GetUserRecommendByUserId(toUser.ID)
-	if nil == userRecommend {
-		return &pb.SetVipReply{Status: "目标用户不存在"}, nil
-	}
-
-	if "" != userRecommend.RecommendCode {
-		tmpRecommendUserIds := strings.Split(userRecommend.RecommendCode, "D")
-		if 2 <= len(tmpRecommendUserIds) {
-			myUserRecommendUserId, _ := strconv.ParseUint(tmpRecommendUserIds[len(tmpRecommendUserIds)-1], 10, 64) // 最后一位是直推人
-			if myUserRecommendUserId <= 0 || myUserRecommendUserId != userId {
-				return &pb.SetVipReply{Status: "推荐人信息错误"}, nil
-			}
-		}
-	}
-
-	myUserRecommend, err = uuc.repo.GetUserRecommendLikeCode(userRecommend.RecommendCode + "D" + strconv.FormatUint(user.ID, 10))
-	if nil == myUserRecommend || nil != err {
-		return &pb.SetVipReply{Status: "获取数据错误不存在"}, nil
-	}
-
-	var (
 		users    []*User
 		usersMap map[uint64]*User
 	)
@@ -644,13 +619,68 @@ func (uuc *UserUseCase) SetVip(ctx context.Context, req *pb.SetVipRequest, userI
 		usersMap[vUsers.ID] = vUsers
 	}
 
+	var (
+		userRecommend   *UserRecommend
+		myUserRecommend []*UserRecommend
+	)
+	// 推荐
+	userRecommend, err = uuc.repo.GetUserRecommendByUserId(toUser.ID)
+	if nil == userRecommend {
+		return &pb.SetVipReply{Status: "目标用户不存在"}, nil
+	}
+
+	if "" != userRecommend.RecommendCode {
+		tmpRecommendUserIds := strings.Split(userRecommend.RecommendCode, "D")
+		if 2 <= len(tmpRecommendUserIds) {
+			tmpMyUp := false
+			for _, v := range tmpRecommendUserIds {
+				myUserRecommendUserId, _ := strconv.ParseUint(v, 10, 64) // 最后一位是直推人
+				if myUserRecommendUserId <= 0 {
+					continue
+				} else {
+					if myUserRecommendUserId == userId {
+						tmpMyUp = true
+					}
+				}
+			}
+
+			if !tmpMyUp {
+				return &pb.SetVipReply{Status: "目标用户并不是你的团队用户"}, nil
+			}
+
+			for _, v := range tmpRecommendUserIds {
+				myUserRecommendUserId, _ := strconv.ParseUint(v, 10, 64) // 最后一位是直推人
+				if myUserRecommendUserId <= 0 {
+					continue
+				}
+
+				if _, ok := usersMap[myUserRecommendUserId]; !ok {
+					return &pb.SetVipReply{Status: "数据异常"}, nil
+				}
+
+				if req.SendBody.Vip >= usersMap[myUserRecommendUserId].Vip {
+					return &pb.SetVipReply{Status: "他上级的等级存在小于等于当前的设置"}, nil
+				}
+			}
+		}
+
+	} else {
+		return &pb.SetVipReply{Status: "目标用户无上级"}, nil
+	}
+
+	// 下级比我小
+	myUserRecommend, err = uuc.repo.GetUserRecommendLikeCode(userRecommend.RecommendCode + "D" + strconv.FormatUint(toUser.ID, 10))
+	if nil == myUserRecommend || nil != err {
+		return &pb.SetVipReply{Status: "获取数据错误不存在"}, nil
+	}
+
 	for _, v := range myUserRecommend {
 		if _, ok := usersMap[v.UserId]; !ok {
 			return &pb.SetVipReply{Status: "数据异常"}, nil
 		}
 
 		if req.SendBody.Vip <= usersMap[v.UserId].Vip {
-			return &pb.SetVipReply{Status: "团队里存在vip等级大于等当前的设置"}, nil
+			return &pb.SetVipReply{Status: "他下级的等级存在大于等于当前的设置"}, nil
 		}
 	}
 
