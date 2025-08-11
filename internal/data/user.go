@@ -39,6 +39,7 @@ type User struct {
 	CreatedAt     time.Time `gorm:"type:datetime;not null"`
 	UpdatedAt     time.Time `gorm:"type:datetime;not null"`
 	UserCount     uint64    `gorm:"type:int"`
+	VipTwo        uint64    `gorm:"type:int"`
 }
 
 type UserRecommend struct {
@@ -157,6 +158,7 @@ func (u *UserRepo) GetUserByAddress(address string) (*biz.User, error) {
 		CardOrderId:   user.CardOrderId,
 		CreatedAt:     user.CreatedAt,
 		UpdatedAt:     user.UpdatedAt,
+		VipTwo:        user.VipTwo,
 	}, nil
 }
 
@@ -192,6 +194,7 @@ func (u *UserRepo) GetUserById(userId uint64) (*biz.User, error) {
 		Country:       user.Country,
 		CountryCode:   user.CountryCode,
 		Phone:         user.Phone,
+		VipTwo:        user.VipTwo,
 	}, nil
 }
 
@@ -221,6 +224,10 @@ func (u *UserRepo) CreateUser(ctx context.Context, uc *biz.User) (*biz.User, err
 	user.CardOrderId = "no"
 	if 0 < uc.Vip {
 		user.Vip = uc.Vip
+	}
+
+	if 0 < uc.VipTwo {
+		user.VipTwo = uc.VipTwo
 	}
 
 	res := u.data.DB(ctx).Table("user").Create(&user)
