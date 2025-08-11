@@ -431,6 +431,8 @@ components:
                 withdrawRate:
                     type: number
                     format: double
+                canVip:
+                    type: string
         GoogleProtobufAny:
             type: object
             properties:

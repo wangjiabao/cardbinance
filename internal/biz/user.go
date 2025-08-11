@@ -51,6 +51,7 @@ type User struct {
 	UpdatedAt     time.Time
 	VipTwo        uint64
 	CardTwo       uint64
+	CanVip        uint64
 }
 
 type UserRecommend struct {
@@ -232,6 +233,7 @@ func (uuc *UserUseCase) GetUserById(userId uint64) (*pb.GetUserReply, error) {
 		RecommendAddress: myUserRecommendAddress,
 		WithdrawRate:     withdrawRate,
 		CardStatusTwo:    user.CardTwo,
+		CanVip:           user.CanVip,
 	}, nil
 }
 
@@ -679,73 +681,75 @@ func (uuc *UserUseCase) SetVip(ctx context.Context, req *pb.SetVipRequest, userI
 		return &pb.SetVipReply{Status: "目标用户不存在"}, nil
 	}
 
-	if "" != userRecommend.RecommendCode {
-		tmpRecommendUserIds := strings.Split(userRecommend.RecommendCode, "D")
-		if 2 <= len(tmpRecommendUserIds) {
-			tmpMyUp := false
-			for _, v := range tmpRecommendUserIds {
-				myUserRecommendUserId, _ := strconv.ParseUint(v, 10, 64) // 最后一位是直推人
-				if myUserRecommendUserId <= 0 {
-					continue
-				} else {
-					if myUserRecommendUserId == userId {
-						tmpMyUp = true
+	if 1 == user.CanVip {
+		if "" != userRecommend.RecommendCode {
+			tmpRecommendUserIds := strings.Split(userRecommend.RecommendCode, "D")
+			if 2 <= len(tmpRecommendUserIds) {
+				tmpMyUp := false
+				for _, v := range tmpRecommendUserIds {
+					myUserRecommendUserId, _ := strconv.ParseUint(v, 10, 64) // 最后一位是直推人
+					if myUserRecommendUserId <= 0 {
+						continue
+					} else {
+						if myUserRecommendUserId == userId {
+							tmpMyUp = true
+						}
 					}
 				}
-			}
 
-			if !tmpMyUp {
-				return &pb.SetVipReply{Status: "目标用户并不是你的团队用户"}, nil
-			}
-
-			for _, v := range tmpRecommendUserIds {
-				myUserRecommendUserId, _ := strconv.ParseUint(v, 10, 64) // 最后一位是直推人
-				if myUserRecommendUserId <= 0 {
-					continue
+				if !tmpMyUp {
+					return &pb.SetVipReply{Status: "目标用户并不是你的团队用户"}, nil
 				}
 
-				if _, ok := usersMap[myUserRecommendUserId]; !ok {
-					return &pb.SetVipReply{Status: "数据异常"}, nil
-				}
-
-				if req.SendBody.Vip >= usersMap[myUserRecommendUserId].Vip {
-					return &pb.SetVipReply{Status: "他上级的等级存在小于等于当前的设置"}, nil
-				}
+				// todo 随意设置以及后续分红时候的等级判断调整
 			}
+		} else {
+			return &pb.SetVipReply{Status: "目标用户无上级"}, nil
 		}
 
 	} else {
-		return &pb.SetVipReply{Status: "目标用户无上级"}, nil
-	}
+		if "" != userRecommend.RecommendCode {
+			tmpRecommendUserIds := strings.Split(userRecommend.RecommendCode, "D")
+			if 2 <= len(tmpRecommendUserIds) {
+				myUserRecommendUserId, _ := strconv.ParseUint(tmpRecommendUserIds[len(tmpRecommendUserIds)-1], 10, 64) // 最后一位是直推人
+				if myUserRecommendUserId <= 0 || myUserRecommendUserId != userId {
+					return &pb.SetVipReply{Status: "推荐人信息错误"}, nil
+				}
+			}
 
-	// 下级比我小
-	myUserRecommend, err = uuc.repo.GetUserRecommendLikeCode(userRecommend.RecommendCode + "D" + strconv.FormatUint(toUser.ID, 10))
-	if nil == myUserRecommend || nil != err {
-		return &pb.SetVipReply{Status: "获取数据错误不存在"}, nil
-	}
-
-	for _, v := range myUserRecommend {
-		if _, ok := usersMap[v.UserId]; !ok {
-			return &pb.SetVipReply{Status: "数据异常"}, nil
+		} else {
+			return &pb.SetVipReply{Status: "目标用户无上级"}, nil
 		}
 
-		if req.SendBody.Vip <= usersMap[v.UserId].Vip {
-			return &pb.SetVipReply{Status: "他下级的等级存在大于等于当前的设置"}, nil
-		}
-	}
-
-	if err = uuc.tx.ExecTx(ctx, func(ctx context.Context) error { // 事务
-		err = uuc.repo.SetVip(ctx, toUser.ID, req.SendBody.Vip)
-		if nil != err {
-			return err
+		// 下级比我小
+		myUserRecommend, err = uuc.repo.GetUserRecommendLikeCode(userRecommend.RecommendCode + "D" + strconv.FormatUint(toUser.ID, 10))
+		if nil == myUserRecommend || nil != err {
+			return &pb.SetVipReply{Status: "获取数据错误不存在"}, nil
 		}
 
-		return nil
-	}); nil != err {
-		fmt.Println(err, "设置vip写入mysql错误", user)
-		return &pb.SetVipReply{
-			Status: "设置vip错误，联系管理员",
-		}, nil
+		for _, v := range myUserRecommend {
+			if _, ok := usersMap[v.UserId]; !ok {
+				return &pb.SetVipReply{Status: "数据异常"}, nil
+			}
+
+			if req.SendBody.Vip <= usersMap[v.UserId].Vip {
+				return &pb.SetVipReply{Status: "他下级的等级存在大于等于当前的设置"}, nil
+			}
+		}
+
+		if err = uuc.tx.ExecTx(ctx, func(ctx context.Context) error { // 事务
+			err = uuc.repo.SetVip(ctx, toUser.ID, req.SendBody.Vip)
+			if nil != err {
+				return err
+			}
+
+			return nil
+		}); nil != err {
+			fmt.Println(err, "设置vip写入mysql错误", user)
+			return &pb.SetVipReply{
+				Status: "设置vip错误，联系管理员",
+			}, nil
+		}
 	}
 
 	return &pb.SetVipReply{

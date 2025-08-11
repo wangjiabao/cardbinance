@@ -157,6 +157,7 @@ message GetUserReply {
 	string cardAmount = 7; // 我的卡额度
 	string recommendAddress = 8; // 我的推荐人
 	double withdrawRate = 10;
+	uint64 canVip = 12;
 }
 
 message RecommendListRequest {
