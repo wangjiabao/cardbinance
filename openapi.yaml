@@ -154,6 +154,30 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /api/app_server/open_card_two:
+        post:
+            tags:
+                - User
+            operationId: User_OpenCardTwo
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/OpenCardRequest_SendBody'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/OpenCardReply'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /api/app_server/order_list:
         get:
             tags:
@@ -196,6 +220,30 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/RecommendListReply'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/app_server/record_list:
+        get:
+            tags:
+                - User
+            description: 明细列表
+            operationId: User_RecordList
+            parameters:
+                - name: page
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/RecordListReply'
                 default:
                     description: Default error response
                     content:
@@ -374,6 +422,8 @@ components:
                     type: string
                 cardStatus:
                     type: string
+                cardStatusTwo:
+                    type: string
                 cardAmount:
                     type: string
                 recommendAddress:
@@ -494,6 +544,24 @@ components:
                 vip:
                     type: string
                 cardOpen:
+                    type: string
+        RecordListReply:
+            type: object
+            properties:
+                status:
+                    type: string
+                count:
+                    type: string
+                list:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/RecordListReply_List'
+        RecordListReply_List:
+            type: object
+            properties:
+                createdAt:
+                    type: string
+                remark:
                     type: string
         RewardListReply:
             type: object

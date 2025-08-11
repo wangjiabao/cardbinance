@@ -40,6 +40,35 @@ type User struct {
 	UpdatedAt     time.Time `gorm:"type:datetime;not null"`
 	UserCount     uint64    `gorm:"type:int"`
 	VipTwo        uint64    `gorm:"type:int"`
+	CardTwo       uint64    `gorm:"type:int"`
+}
+
+type CardTwo struct {
+	ID          uint64    `gorm:"primarykey;type:int"`
+	UserId      uint64    `gorm:"type:int;not null"`
+	FirstName   string    `gorm:"type:varchar(45);not null;default:'no'"`
+	LastName    string    `gorm:"type:varchar(45);not null;default:'no'"`
+	Email       string    `gorm:"type:varchar(100);not null;default:'no'"`
+	CountryCode string    `gorm:"type:varchar(45);not null;default:'no'"`
+	Phone       string    `gorm:"type:varchar(45);not null;default:'no'"`
+	City        string    `gorm:"type:varchar(100);not null;default:'no'"`
+	Country     string    `gorm:"type:varchar(100);not null;default:'no'"`
+	Street      string    `gorm:"type:varchar(100);not null;default:'no'"`
+	PostalCode  string    `gorm:"type:varchar(45);not null;default:'no'"`
+	BirthDate   string    `gorm:"type:varchar(45);not null;default:'no'"`
+	CreatedAt   time.Time `gorm:"type:datetime;not null"`
+	UpdatedAt   time.Time `gorm:"type:datetime;not null"`
+}
+
+type CardRecord struct {
+	ID         uint64    `gorm:"primarykey;type:int"`
+	UserId     uint64    `gorm:"type:int;not null"`
+	RecordType uint64    `gorm:"type:int;not null"`
+	Remark     string    `gorm:"type:varchar(500);not null"`
+	Code       string    `gorm:"type:varchar(100);not null"`
+	Opt        string    `gorm:"type:varchar(100);not null"`
+	CreatedAt  time.Time `gorm:"type:datetime;not null"`
+	UpdatedAt  time.Time `gorm:"type:datetime;not null"`
 }
 
 type UserRecommend struct {
@@ -195,6 +224,7 @@ func (u *UserRepo) GetUserById(userId uint64) (*biz.User, error) {
 		CountryCode:   user.CountryCode,
 		Phone:         user.Phone,
 		VipTwo:        user.VipTwo,
+		CardTwo:       user.CardTwo,
 	}, nil
 }
 
@@ -425,6 +455,52 @@ func (u *UserRepo) CreateCard(ctx context.Context, userId uint64, user *biz.User
 	reward.Reason = 3 // 给我分红的理由
 	resInsert := u.data.DB(ctx).Table("reward").Create(&reward)
 	if resInsert.Error != nil || 0 >= resInsert.RowsAffected {
+		return errors.New(500, "CREATE_LOCATION_ERROR", "信息创建失败")
+	}
+
+	return nil
+}
+
+// CreateCardTwo .
+func (u *UserRepo) CreateCardTwo(ctx context.Context, userId uint64, user *biz.User) error {
+	res := u.data.DB(ctx).Table("user").Where("id=?", userId).Where("amount>=?", user.Amount).Where("card_two=?", 0).
+		Updates(map[string]interface{}{
+			"amount":   gorm.Expr("amount - ?", user.Amount),
+			"card_two": 1,
+		})
+	if res.Error != nil || 0 >= res.RowsAffected {
+		return errors.New(500, "UPDATE_USER_ERROR", "用户信息修改失败")
+	}
+
+	var (
+		reward Reward
+	)
+
+	reward.UserId = userId
+	reward.Amount = user.Amount
+	reward.Reason = 9 // 给我分红的理由
+	resInsert := u.data.DB(ctx).Table("reward").Create(&reward)
+	if resInsert.Error != nil || 0 >= resInsert.RowsAffected {
+		return errors.New(500, "CREATE_LOCATION_ERROR", "信息创建失败")
+	}
+
+	var (
+		cardTwo CardTwo
+	)
+
+	cardTwo.UserId = userId
+	cardTwo.Phone = user.Phone
+	cardTwo.Street = user.Street
+	cardTwo.PostalCode = user.PostalCode
+	cardTwo.BirthDate = user.BirthDate
+	cardTwo.FirstName = user.FirstName
+	cardTwo.LastName = user.LastName
+	cardTwo.Email = user.Email
+	cardTwo.CountryCode = user.CountryCode
+	cardTwo.Country = user.Country
+
+	resInsertTwo := u.data.DB(ctx).Table("card_two").Create(&reward)
+	if resInsertTwo.Error != nil || 0 >= resInsertTwo.RowsAffected {
 		return errors.New(500, "CREATE_LOCATION_ERROR", "信息创建失败")
 	}
 
@@ -702,6 +778,42 @@ func (u *UserRepo) GetUserRewardByUserIdPage(ctx context.Context, b *biz.Paginat
 			Address:   reward.Address,
 			One:       reward.One,
 			UpdatedAt: reward.UpdatedAt,
+		})
+	}
+
+	return res, nil, count
+}
+
+// GetUserRecordByUserIdPage .
+func (u *UserRepo) GetUserRecordByUserIdPage(ctx context.Context, b *biz.Pagination, userId uint64) ([]*biz.CardRecord, error, int64) {
+	var (
+		count   int64
+		records []*CardRecord
+	)
+
+	res := make([]*biz.CardRecord, 0)
+
+	instance := u.data.db.Where("user_id", userId).Table("card_record").Order("id desc")
+	instance = instance.Count(&count)
+
+	if err := instance.Scopes(Paginate(b.PageNum, b.PageSize)).Find(&records).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return res, errors.NotFound("REWARD_NOT_FOUND", "reward not found"), 0
+		}
+
+		return nil, errors.New(500, "REWARD ERROR", err.Error()), 0
+	}
+
+	for _, r := range records {
+		res = append(res, &biz.CardRecord{
+			ID:         r.ID,
+			UserId:     r.UserId,
+			RecordType: 0,
+			Remark:     r.Remark,
+			Code:       "",
+			Opt:        "",
+			CreatedAt:  r.CreatedAt,
+			UpdatedAt:  time.Time{},
 		})
 	}
 

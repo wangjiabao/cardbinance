@@ -51,10 +51,24 @@ service User {
 		};
 	};
 
+	// 明细列表
+	rpc RecordList (RecordListRequest) returns (RecordListReply) {
+		option (google.api.http) = {
+			get: "/api/app_server/record_list"
+		};
+	};
+
 	// 开卡
 	rpc OpenCard (OpenCardRequest) returns (OpenCardReply) {
 		option (google.api.http) = {
 			post: "/api/app_server/open_card"
+			body: "send_body"
+		};
+	};
+
+	rpc OpenCardTwo (OpenCardRequest) returns (OpenCardReply) {
+		option (google.api.http) = {
+			post: "/api/app_server/open_card_two"
 			body: "send_body"
 		};
 	};
@@ -139,6 +153,7 @@ message GetUserReply {
 	uint64 vip = 5; // 我的级别
 	string cardNum = 6; // 我的卡号
 	uint64 cardStatus = 9; //  激活状态
+	uint64 cardStatusTwo = 11; //  激活状态
 	string cardAmount = 7; // 我的卡额度
 	string recommendAddress = 8; // 我的推荐人
 	double withdrawRate = 10;
@@ -254,6 +269,21 @@ message WithdrawRequest {
 
 message WithdrawReply {
 	string status = 1;
+}
+
+
+message RecordListRequest {
+	uint64 page = 1; // 页数
+}
+
+message RecordListReply {
+	string status = 1;
+	uint64 count = 2; // 总数，每页20
+	repeated List list = 3;
+	message List {
+		string createdAt = 1; // 时间
+		string remark = 2; // 数量
+	}
 }
 
 message RewardListRequest {

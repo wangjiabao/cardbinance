@@ -50,6 +50,7 @@ type User struct {
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 	VipTwo        uint64
+	CardTwo       uint64
 }
 
 type UserRecommend struct {
@@ -89,6 +90,17 @@ type Reward struct {
 	One       uint64
 }
 
+type CardRecord struct {
+	ID         uint64
+	UserId     uint64
+	RecordType uint64
+	Remark     string
+	Code       string
+	Opt        string
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+}
+
 type UserRepo interface {
 	SetNonceByAddress(ctx context.Context, wallet string) (int64, error)
 	GetAndDeleteWalletTimestamp(ctx context.Context, wallet string) (string, error)
@@ -102,6 +114,7 @@ type UserRepo interface {
 	GetUserRecommendLikeCode(code string) ([]*UserRecommend, error)
 	GetUserByUserIds(userIds []uint64) (map[uint64]*User, error)
 	CreateCard(ctx context.Context, userId uint64, user *User) error
+	CreateCardTwo(ctx context.Context, userId uint64, user *User) error
 	GetAllUsers() ([]*User, error)
 	UpdateCard(ctx context.Context, userId uint64, cardOrderId, card string) error
 	CreateCardRecommend(ctx context.Context, userId uint64, amount float64, vip uint64, address string) error
@@ -110,6 +123,7 @@ type UserRepo interface {
 	AmountTo(ctx context.Context, userId, toUserId uint64, toAddress string, amount float64) error
 	Withdraw(ctx context.Context, userId uint64, amount, amountRel float64, address string) error
 	GetUserRewardByUserIdPage(ctx context.Context, b *Pagination, userId uint64, reason uint64) ([]*Reward, error, int64)
+	GetUserRecordByUserIdPage(ctx context.Context, b *Pagination, userId uint64) ([]*CardRecord, error, int64)
 	SetVip(ctx context.Context, userId uint64, vip uint64) error
 	GetUsersOpenCard() ([]*User, error)
 }
@@ -217,6 +231,7 @@ func (uuc *UserUseCase) GetUserById(userId uint64) (*pb.GetUserReply, error) {
 		CardAmount:       cardAmount,
 		RecommendAddress: myUserRecommendAddress,
 		WithdrawRate:     withdrawRate,
+		CardStatusTwo:    user.CardTwo,
 	}, nil
 }
 
@@ -401,6 +416,41 @@ func (uuc *UserUseCase) OrderList(ctx context.Context, req *pb.OrderListRequest,
 	return &pb.OrderListReply{
 		Status: "ok",
 		Count:  resGet.Total,
+		List:   res,
+	}, nil
+}
+
+func (uuc *UserUseCase) RecordList(ctx context.Context, req *pb.RecordListRequest, userId uint64) (*pb.RecordListReply, error) {
+	res := make([]*pb.RecordListReply_List, 0)
+
+	var (
+		userRewards []*CardRecord
+		count       int64
+		err         error
+	)
+
+	userRewards, err, count = uuc.repo.GetUserRecordByUserIdPage(ctx, &Pagination{
+		PageNum:  int(req.Page),
+		PageSize: 20,
+	}, userId)
+	if nil != err {
+		return &pb.RecordListReply{
+			Status: "ok",
+			Count:  uint64(count),
+			List:   res,
+		}, err
+	}
+
+	for _, vUserReward := range userRewards {
+		res = append(res, &pb.RecordListReply_List{
+			CreatedAt: vUserReward.CreatedAt.Add(8 * time.Hour).Format("2006-01-02 15:04:05"),
+			Remark:    vUserReward.Remark,
+		})
+	}
+
+	return &pb.RecordListReply{
+		Status: "ok",
+		Count:  uint64(count),
 		List:   res,
 	}, nil
 }
@@ -960,6 +1010,96 @@ func (uuc *UserUseCase) OpenCard(ctx context.Context, req *pb.OpenCardRequest, u
 		}, nil
 	}
 	//}
+
+	return &pb.OpenCardReply{
+		Status: "ok",
+	}, nil
+}
+
+func (uuc *UserUseCase) OpenCardTwo(ctx context.Context, req *pb.OpenCardRequest, userId uint64) (*pb.OpenCardReply, error) {
+	lockAmount.Lock()
+	defer lockAmount.Unlock()
+
+	var (
+		user       *User
+		err        error
+		cardAmount = float64(150)
+	)
+
+	user, err = uuc.repo.GetUserById(userId)
+	if nil == user || nil != err {
+		return &pb.OpenCardReply{Status: "用户不存在"}, nil
+	}
+
+	if 0 < user.CardTwo {
+		return &pb.OpenCardReply{Status: "已提交"}, nil
+	}
+
+	if 150 > uint64(user.Amount) {
+		return &pb.OpenCardReply{Status: "账号余额不足150u"}, nil
+	}
+
+	if 1 > len(req.SendBody.Email) || len(req.SendBody.Email) > 99 {
+		return &pb.OpenCardReply{Status: "邮箱错误"}, nil
+	}
+
+	if 1 > len(req.SendBody.FirstName) || len(req.SendBody.FirstName) > 44 {
+		return &pb.OpenCardReply{Status: "名字错误"}, nil
+	}
+
+	if 1 > len(req.SendBody.LastName) || len(req.SendBody.LastName) > 44 {
+		return &pb.OpenCardReply{Status: "姓错误"}, nil
+	}
+
+	if 1 > len(req.SendBody.Phone) || len(req.SendBody.Phone) > 44 {
+		return &pb.OpenCardReply{Status: "手机号错误"}, nil
+	}
+
+	if 1 > len(req.SendBody.CountryCode) || len(req.SendBody.CountryCode) > 44 {
+		return &pb.OpenCardReply{Status: "国家代码错误"}, nil
+	}
+
+	if 1 > len(req.SendBody.Street) || len(req.SendBody.Street) > 99 {
+		return &pb.OpenCardReply{Status: "街道错误"}, nil
+	}
+
+	if 1 > len(req.SendBody.City) || len(req.SendBody.City) > 99 {
+		return &pb.OpenCardReply{Status: "城市错误"}, nil
+	}
+
+	if 1 > len(req.SendBody.PostalCode) || len(req.SendBody.PostalCode) > 99 {
+		return &pb.OpenCardReply{Status: "邮政编码错误"}, nil
+	}
+
+	if 1 > len(req.SendBody.BirthDate) || len(req.SendBody.BirthDate) > 99 {
+		return &pb.OpenCardReply{Status: "生日错误"}, nil
+	}
+
+	if err = uuc.tx.ExecTx(ctx, func(ctx context.Context) error { // 事务
+		err = uuc.repo.CreateCardTwo(ctx, userId, &User{
+			Amount:      cardAmount,
+			FirstName:   req.SendBody.FirstName,
+			LastName:    req.SendBody.LastName,
+			Email:       req.SendBody.Email,
+			CountryCode: req.SendBody.CountryCode,
+			Phone:       req.SendBody.Phone,
+			City:        req.SendBody.City,
+			Country:     req.SendBody.Country,
+			Street:      req.SendBody.Street,
+			PostalCode:  req.SendBody.PostalCode,
+			BirthDate:   req.SendBody.BirthDate,
+		})
+		if nil != err {
+			return err
+		}
+
+		return nil
+	}); nil != err {
+		fmt.Println(err, "开卡2写入mysql错误", user)
+		return &pb.OpenCardReply{
+			Status: "开卡错误，联系管理员",
+		}, nil
+	}
 
 	return &pb.OpenCardReply{
 		Status: "ok",

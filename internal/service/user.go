@@ -75,6 +75,23 @@ func (u *UserService) OrderList(ctx context.Context, req *pb.OrderListRequest) (
 	return u.uuc.OrderList(ctx, req, userId)
 }
 
+func (u *UserService) RecordList(ctx context.Context, req *pb.RecordListRequest) (*pb.RecordListReply, error) {
+	// 在上下文 context 中取出 claims 对象
+	var userId uint64
+	if claims, ok := jwt.FromContext(ctx); ok {
+		c := claims.(jwt2.MapClaims)
+		if c["UserId"] == nil {
+			return &pb.RecordListReply{
+				Status: "无效TOKEN",
+			}, nil
+		}
+
+		userId = uint64(c["UserId"].(float64))
+	}
+
+	return u.uuc.RecordList(ctx, req, userId)
+}
+
 func (u *UserService) RewardList(ctx context.Context, req *pb.RewardListRequest) (*pb.RewardListReply, error) {
 	// 在上下文 context 中取出 claims 对象
 	var userId uint64
@@ -380,6 +397,76 @@ func (u *UserService) OpenCard(ctx context.Context, req *pb.OpenCardRequest) (*p
 	}
 
 	return u.uuc.OpenCard(ctx, req, userId)
+}
+
+func (u *UserService) OpenCardTwo(ctx context.Context, req *pb.OpenCardRequest) (*pb.OpenCardReply, error) {
+	// 在上下文 context 中取出 claims 对象
+	var (
+		err    error
+		userId uint64
+	)
+
+	if claims, ok := jwt.FromContext(ctx); ok {
+		c := claims.(jwt2.MapClaims)
+		if c["UserId"] == nil {
+			return &pb.OpenCardReply{
+				Status: "无效TOKEN",
+			}, nil
+		}
+
+		userId = uint64(c["UserId"].(float64))
+	}
+
+	var (
+		user *biz.User
+	)
+	user, err = u.uuc.GetUserDataById(userId)
+	if nil != err {
+		return &pb.OpenCardReply{
+			Status: "无效TOKEN",
+		}, nil
+	}
+
+	if 1 == user.IsDelete {
+		return &pb.OpenCardReply{
+			Status: "用户已删除",
+		}, nil
+	}
+
+	var (
+		res             bool
+		addressFromSign string
+	)
+	if 10 >= len(req.SendBody.Sign) {
+		return &pb.OpenCardReply{
+			Status: "签名错误",
+		}, nil
+	}
+
+	var (
+		contentStr string
+	)
+	contentStr, err = u.uuc.GetAddressNonce(ctx, user.Address)
+	if nil != err {
+		return &pb.OpenCardReply{
+			Status: "错误",
+		}, nil
+	}
+	if 0 >= len(contentStr) {
+		return &pb.OpenCardReply{
+			Status: "错误nonce",
+		}, nil
+	}
+	content := []byte(contentStr)
+
+	res, addressFromSign = verifySig(req.SendBody.Sign, content)
+	if !res || addressFromSign != user.Address {
+		return &pb.OpenCardReply{
+			Status: "签名错误",
+		}, nil
+	}
+
+	return u.uuc.OpenCardTwo(ctx, req, userId)
 }
 
 func (u *UserService) AmountToCard(ctx context.Context, req *pb.AmountToCardRequest) (*pb.AmountToCardReply, error) {
