@@ -700,8 +700,6 @@ func (uuc *UserUseCase) SetVip(ctx context.Context, req *pb.SetVipRequest, userI
 				if !tmpMyUp {
 					return &pb.SetVipReply{Status: "目标用户并不是你的团队用户"}, nil
 				}
-
-				// todo 随意设置以及后续分红时候的等级判断调整
 			}
 		} else {
 			return &pb.SetVipReply{Status: "目标用户无上级"}, nil
@@ -713,10 +711,9 @@ func (uuc *UserUseCase) SetVip(ctx context.Context, req *pb.SetVipRequest, userI
 			if 2 <= len(tmpRecommendUserIds) {
 				myUserRecommendUserId, _ := strconv.ParseUint(tmpRecommendUserIds[len(tmpRecommendUserIds)-1], 10, 64) // 最后一位是直推人
 				if myUserRecommendUserId <= 0 || myUserRecommendUserId != userId {
-					return &pb.SetVipReply{Status: "推荐人信息错误"}, nil
+					return &pb.SetVipReply{Status: "不是直推下级用户"}, nil
 				}
 			}
-
 		} else {
 			return &pb.SetVipReply{Status: "目标用户无上级"}, nil
 		}
@@ -736,20 +733,20 @@ func (uuc *UserUseCase) SetVip(ctx context.Context, req *pb.SetVipRequest, userI
 				return &pb.SetVipReply{Status: "他下级的等级存在大于等于当前的设置"}, nil
 			}
 		}
+	}
 
-		if err = uuc.tx.ExecTx(ctx, func(ctx context.Context) error { // 事务
-			err = uuc.repo.SetVip(ctx, toUser.ID, req.SendBody.Vip)
-			if nil != err {
-				return err
-			}
-
-			return nil
-		}); nil != err {
-			fmt.Println(err, "设置vip写入mysql错误", user)
-			return &pb.SetVipReply{
-				Status: "设置vip错误，联系管理员",
-			}, nil
+	if err = uuc.tx.ExecTx(ctx, func(ctx context.Context) error { // 事务
+		err = uuc.repo.SetVip(ctx, toUser.ID, req.SendBody.Vip)
+		if nil != err {
+			return err
 		}
+
+		return nil
+	}); nil != err {
+		fmt.Println(err, "设置vip写入mysql错误", user)
+		return &pb.SetVipReply{
+			Status: "设置vip错误，联系管理员",
+		}, nil
 	}
 
 	return &pb.SetVipReply{
