@@ -502,7 +502,7 @@ func (u *UserRepo) CreateCardTwo(ctx context.Context, userId uint64, user *biz.U
 	cardTwo.Country = user.Country
 	cardTwo.City = user.City
 
-	resInsertTwo := u.data.DB(ctx).Table("card_two").Create(&reward)
+	resInsertTwo := u.data.DB(ctx).Table("card_two").Create(&cardTwo)
 	if resInsertTwo.Error != nil || 0 >= resInsertTwo.RowsAffected {
 		return errors.New(500, "CREATE_LOCATION_ERROR", "信息创建失败")
 	}
