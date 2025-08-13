@@ -158,6 +158,7 @@ message GetUserReply {
 	string recommendAddress = 8; // 我的推荐人
 	double withdrawRate = 10;
 	uint64 canVip = 12;
+	uint64 vipThree = 13;
 }
 
 message RecommendListRequest {
@@ -172,6 +173,7 @@ message RecommendListReply {
 		string address = 1; // 地址
 		uint64 amount = 2; // 业绩
 		uint64 vip = 3; // 级别
+		uint64 vipThree = 5; // 级别
 		uint64 cardOpen = 4; // 开卡状态 0 未开通 1已开通
 	}
 }

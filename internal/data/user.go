@@ -42,6 +42,7 @@ type User struct {
 	VipTwo        uint64    `gorm:"type:int"`
 	CardTwo       uint64    `gorm:"type:int"`
 	CanVip        uint64    `gorm:"type:int"`
+	VipThree      uint64    `gorm:"type:int"`
 }
 
 type CardTwo struct {
@@ -227,6 +228,7 @@ func (u *UserRepo) GetUserById(userId uint64) (*biz.User, error) {
 		VipTwo:        user.VipTwo,
 		CardTwo:       user.CardTwo,
 		CanVip:        user.CanVip,
+		VipThree:      user.VipThree,
 	}, nil
 }
 
@@ -392,6 +394,7 @@ func (u *UserRepo) GetUserByUserIds(userIds []uint64) (map[uint64]*biz.User, err
 			UpdatedAt:     user.UpdatedAt,
 			CardNumber:    user.CardNumber,
 			CardOrderId:   user.CardOrderId,
+			VipThree:      user.VipThree,
 		}
 	}
 

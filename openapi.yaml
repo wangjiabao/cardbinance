@@ -433,6 +433,8 @@ components:
                     format: double
                 canVip:
                     type: string
+                vipThree:
+                    type: string
         GoogleProtobufAny:
             type: object
             properties:
@@ -544,6 +546,8 @@ components:
                 amount:
                     type: string
                 vip:
+                    type: string
+                vipThree:
                     type: string
                 cardOpen:
                     type: string

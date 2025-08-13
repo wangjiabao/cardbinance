@@ -50,6 +50,7 @@ type User struct {
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 	VipTwo        uint64
+	VipThree      uint64
 	CardTwo       uint64
 	CanVip        uint64
 }
@@ -234,6 +235,7 @@ func (uuc *UserUseCase) GetUserById(userId uint64) (*pb.GetUserReply, error) {
 		WithdrawRate:     withdrawRate,
 		CardStatusTwo:    user.CardTwo,
 		CanVip:           user.CanVip,
+		VipThree:         user.VipThree,
 	}, nil
 }
 
@@ -334,6 +336,7 @@ func (uuc *UserUseCase) GetUserRecommend(ctx context.Context, req *pb.RecommendL
 			Address:  usersMap[vMyUserRecommend.UserId].Address,
 			Amount:   usersMap[vMyUserRecommend.UserId].AmountTwo + usersMap[vMyUserRecommend.UserId].MyTotalAmount,
 			Vip:      usersMap[vMyUserRecommend.UserId].Vip,
+			VipThree: usersMap[vMyUserRecommend.UserId].VipThree,
 			CardOpen: cardOpen,
 		})
 	}
