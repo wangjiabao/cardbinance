@@ -391,7 +391,7 @@ func (uuc *UserUseCase) OrderList(ctx context.Context, req *pb.OrderListRequest,
 		resGet *CardTransactionListResponse
 	)
 	resGet, err = GetCardTransactionList(cardId, req.Page, 20)
-	if err != nil {
+	if nil == resGet || err != nil {
 		return &pb.OrderListReply{Status: "查询错误", Count: 0,
 			List: res,
 		}, nil
