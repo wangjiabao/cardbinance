@@ -106,6 +106,8 @@ type CardRecord struct {
 type UserRepo interface {
 	SetNonceByAddress(ctx context.Context, wallet string) (int64, error)
 	GetAndDeleteWalletTimestamp(ctx context.Context, wallet string) (string, error)
+	SetLockAmountToCardByAddress(ctx context.Context, wallet string) error
+	GetLockAmountToCardByAddress(ctx context.Context, wallet string) (string, error)
 	GetConfigByKeys(keys ...string) ([]*Config, error)
 	GetUserByAddress(address string) (*User, error)
 	GetUserById(userId uint64) (*User, error)
@@ -120,8 +122,8 @@ type UserRepo interface {
 	GetAllUsers() ([]*User, error)
 	UpdateCard(ctx context.Context, userId uint64, cardOrderId, card string) error
 	CreateCardRecommend(ctx context.Context, userId uint64, amount float64, vip uint64, address string) error
-	AmountToCard(ctx context.Context, userId uint64, amount float64) error
-	AmountToCardReward(ctx context.Context, userId uint64, amount float64, orderId string) error
+	AmountToCard(ctx context.Context, userId uint64, amount float64) (uint64, error)
+	AmountToCardReward(ctx context.Context, userId uint64, amount float64, orderId string, rewardId uint64) error
 	AmountTo(ctx context.Context, userId, toUserId uint64, toAddress string, amount float64) error
 	Withdraw(ctx context.Context, userId uint64, amount, amountRel float64, address string) error
 	GetUserRewardByUserIdPage(ctx context.Context, b *Pagination, userId uint64, reason uint64) ([]*Reward, error, int64)
@@ -1128,12 +1130,23 @@ func (uuc *UserUseCase) AmountToCard(ctx context.Context, req *pb.AmountToCardRe
 	defer lockAmount.Unlock()
 
 	var (
-		user *User
-		err  error
+		user             *User
+		err              error
+		lockAmountToCard string
 	)
 	user, err = uuc.repo.GetUserById(userId)
 	if nil == user || nil != err {
 		return &pb.AmountToCardReply{Status: "用户不存在"}, nil
+	}
+
+	lockAmountToCard, err = uuc.repo.GetLockAmountToCardByAddress(ctx, user.Address)
+	if 0 < len(lockAmountToCard) {
+		return &pb.AmountToCardReply{Status: "每分钟划转1笔"}, nil
+	}
+
+	err = uuc.repo.SetLockAmountToCardByAddress(ctx, user.Address)
+	if nil != err {
+		return &pb.AmountToCardReply{Status: "锁定失败"}, nil
 	}
 
 	if req.SendBody.Amount > uint64(user.Amount) {
@@ -1156,8 +1169,9 @@ func (uuc *UserUseCase) AmountToCard(ctx context.Context, req *pb.AmountToCardRe
 		return &pb.AmountToCardReply{Status: "无卡片记录"}, nil
 	}
 
+	tmpRewardId := uint64(0)
 	if err = uuc.tx.ExecTx(ctx, func(ctx context.Context) error { // 事务
-		err = uuc.repo.AmountToCard(ctx, userId, float64(req.SendBody.Amount))
+		tmpRewardId, err = uuc.repo.AmountToCard(ctx, userId, float64(req.SendBody.Amount))
 		if nil != err {
 			return err
 		}
@@ -1167,6 +1181,12 @@ func (uuc *UserUseCase) AmountToCard(ctx context.Context, req *pb.AmountToCardRe
 		fmt.Println(err, "划转写入mysql错误", user)
 		return &pb.AmountToCardReply{
 			Status: "划转错误，联系管理员",
+		}, nil
+	}
+
+	if 0 >= tmpRewardId {
+		return &pb.AmountToCardReply{
+			Status: "划转错误，联系管理员，记录失败",
 		}, nil
 	}
 
@@ -1186,7 +1206,7 @@ func (uuc *UserUseCase) AmountToCard(ctx context.Context, req *pb.AmountToCardRe
 	}
 
 	if err = uuc.tx.ExecTx(ctx, func(ctx context.Context) error { // 事务
-		err = uuc.repo.AmountToCardReward(ctx, userId, float64(req.SendBody.Amount), cardRes.Data.CardOrderID)
+		err = uuc.repo.AmountToCardReward(ctx, userId, float64(req.SendBody.Amount), cardRes.Data.CardOrderID, tmpRewardId)
 		if nil != err {
 			return err
 		}
