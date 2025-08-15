@@ -656,6 +656,18 @@ func (u *UserRepo) AmountToCard(ctx context.Context, userId uint64, amount float
 		return errors.New(500, "UPDATE_USER_ERROR", "用户信息修改失败")
 	}
 
+	var (
+		reward Reward
+	)
+
+	reward.UserId = userId
+	reward.Amount = amount
+	reward.Reason = 14 // 给我分红的理由
+	resInsert := u.data.DB(ctx).Table("reward").Create(&reward)
+	if resInsert.Error != nil || 0 >= resInsert.RowsAffected {
+		return errors.New(500, "CREATE_LOCATION_ERROR", "信息创建失败")
+	}
+
 	return nil
 }
 
