@@ -470,8 +470,9 @@ func (u *UserRepo) CreateCard(ctx context.Context, userId uint64, user *biz.User
 func (u *UserRepo) CreateCardTwo(ctx context.Context, userId uint64, user *biz.User) error {
 	res := u.data.DB(ctx).Table("user").Where("id=?", userId).Where("amount>=?", user.Amount).Where("card_two=?", 0).
 		Updates(map[string]interface{}{
-			"amount":   gorm.Expr("amount - ?", user.Amount),
-			"card_two": 1,
+			"amount":     gorm.Expr("amount - ?", user.Amount),
+			"updated_at": time.Now().Format("2006-01-02 15:04:05"),
+			"card_two":   1,
 		})
 	if res.Error != nil || 0 >= res.RowsAffected {
 		return errors.New(500, "UPDATE_USER_ERROR", "用户信息修改失败")
