@@ -812,13 +812,13 @@ func (uuc *UserUseCase) OpenCard(ctx context.Context, req *pb.OpenCardRequest, u
 		return &pb.OpenCardReply{Status: "姓错误"}, nil
 	}
 
-	if 1 > len(req.SendBody.Phone) || len(req.SendBody.Phone) > 44 {
-		return &pb.OpenCardReply{Status: "手机号错误"}, nil
-	}
-
-	if 1 > len(req.SendBody.CountryCode) || len(req.SendBody.CountryCode) > 44 {
-		return &pb.OpenCardReply{Status: "国家代码错误"}, nil
-	}
+	//if 1 > len(req.SendBody.Phone) || len(req.SendBody.Phone) > 44 {
+	//	return &pb.OpenCardReply{Status: "手机号错误"}, nil
+	//}
+	//
+	//if 1 > len(req.SendBody.CountryCode) || len(req.SendBody.CountryCode) > 44 {
+	//	return &pb.OpenCardReply{Status: "国家代码错误"}, nil
+	//}
 
 	if 1 > len(req.SendBody.Street) || len(req.SendBody.Street) > 99 {
 		return &pb.OpenCardReply{Status: "街道错误"}, nil
@@ -954,14 +954,19 @@ func (uuc *UserUseCase) OpenCard(ctx context.Context, req *pb.OpenCardRequest, u
 
 	// 请求
 	var (
+		countryCode        = "CN"
+		phone              = strconv.FormatUint(uint64(13077000000)+userId, 10)
 		resCreatCardholder *CreateCardholderResponse
 	)
+
 	resCreatCardholder, err = CreateCardholderRequest(productIdUseInt64, &User{
-		FirstName:   req.SendBody.FirstName,
-		LastName:    req.SendBody.LastName,
-		Email:       req.SendBody.Email,
-		CountryCode: req.SendBody.CountryCode,
-		Phone:       req.SendBody.Phone,
+		FirstName: req.SendBody.FirstName,
+		LastName:  req.SendBody.LastName,
+		Email:     req.SendBody.Email,
+		//CountryCode: req.SendBody.CountryCode,
+		//Phone:       req.SendBody.Phone,
+		CountryCode: countryCode,
+		Phone:       phone,
 		City:        req.SendBody.City,
 		Country:     req.SendBody.Country,
 		Street:      req.SendBody.Street,
@@ -996,8 +1001,8 @@ func (uuc *UserUseCase) OpenCard(ctx context.Context, req *pb.OpenCardRequest, u
 			FirstName:    req.SendBody.FirstName,
 			LastName:     req.SendBody.LastName,
 			Email:        req.SendBody.Email,
-			CountryCode:  req.SendBody.CountryCode,
-			Phone:        req.SendBody.Phone,
+			CountryCode:  countryCode,
+			Phone:        phone,
 			City:         req.SendBody.City,
 			Country:      req.SendBody.Country,
 			Street:       req.SendBody.Street,
