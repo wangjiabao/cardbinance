@@ -776,8 +776,8 @@ func (uuc *UserUseCase) OpenCard(ctx context.Context, req *pb.OpenCardRequest, u
 		return &pb.OpenCardReply{Status: "用户不存在"}, nil
 	}
 
-	if 3 <= user.UserCount {
-		return &pb.OpenCardReply{Status: "提交已经3次。联系管理员"}, nil
+	if 5 <= user.UserCount {
+		return &pb.OpenCardReply{Status: "提交已经5次。联系管理员"}, nil
 	}
 
 	if "no" != user.CardNumber {
@@ -955,9 +955,15 @@ func (uuc *UserUseCase) OpenCard(ctx context.Context, req *pb.OpenCardRequest, u
 	// 请求
 	var (
 		countryCode        = "CN"
-		phone              = strconv.FormatUint(uint64(13077000000)+userId, 10)
+		basePhone          = uint64(13077000000)
 		resCreatCardholder *CreateCardholderResponse
 	)
+
+	if 0 < user.UserCount {
+		basePhone += user.UserCount * 100000
+	}
+
+	phone := strconv.FormatUint(basePhone+userId, 10)
 
 	resCreatCardholder, err = CreateCardholderRequest(productIdUseInt64, &User{
 		FirstName: req.SendBody.FirstName,
