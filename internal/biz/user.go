@@ -822,12 +822,12 @@ func (uuc *UserUseCase) OpenCard(ctx context.Context, req *pb.OpenCardRequest, u
 	//	return &pb.OpenCardReply{Status: "国家代码错误"}, nil
 	//}
 
-	req.SendBody.Street = "Sungang"
+	req.SendBody.Street = "Panyu"
 	//if 1 > len(req.SendBody.Street) || len(req.SendBody.Street) > 99 {
 	//	return &pb.OpenCardReply{Status: "街道错误"}, nil
 	//}
 
-	req.SendBody.City = "shenzhen"
+	req.SendBody.City = "Guangzhou"
 	//if 1 > len(req.SendBody.City) || len(req.SendBody.City) > 99 {
 	//	return &pb.OpenCardReply{Status: "城市错误"}, nil
 	//}
@@ -836,7 +836,7 @@ func (uuc *UserUseCase) OpenCard(ctx context.Context, req *pb.OpenCardRequest, u
 	//	return &pb.OpenCardReply{Status: "国家错误"}, nil
 	//}
 
-	req.SendBody.PostalCode = "518000"
+	req.SendBody.PostalCode = "511400"
 	//if 1 > len(req.SendBody.PostalCode) || len(req.SendBody.PostalCode) > 99 {
 	//	return &pb.OpenCardReply{Status: "邮政编码错误"}, nil
 	//}
