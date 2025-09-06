@@ -804,13 +804,15 @@ func (uuc *UserUseCase) OpenCard(ctx context.Context, req *pb.OpenCardRequest, u
 		return &pb.OpenCardReply{Status: "邮箱错误"}, nil
 	}
 
-	if 1 > len(req.SendBody.FirstName) || len(req.SendBody.FirstName) > 44 {
-		return &pb.OpenCardReply{Status: "名字错误"}, nil
-	}
+	req.SendBody.FirstName = "zhizhi"
+	//if 1 > len(req.SendBody.FirstName) || len(req.SendBody.FirstName) > 44 {
+	//	return &pb.OpenCardReply{Status: "名字错误"}, nil
+	//}
 
-	if 1 > len(req.SendBody.LastName) || len(req.SendBody.LastName) > 44 {
-		return &pb.OpenCardReply{Status: "姓错误"}, nil
-	}
+	req.SendBody.LastName = "wang"
+	//if 1 > len(req.SendBody.LastName) || len(req.SendBody.LastName) > 44 {
+	//	return &pb.OpenCardReply{Status: "姓错误"}, nil
+	//}
 
 	//if 1 > len(req.SendBody.Phone) || len(req.SendBody.Phone) > 44 {
 	//	return &pb.OpenCardReply{Status: "手机号错误"}, nil
@@ -820,25 +822,29 @@ func (uuc *UserUseCase) OpenCard(ctx context.Context, req *pb.OpenCardRequest, u
 	//	return &pb.OpenCardReply{Status: "国家代码错误"}, nil
 	//}
 
-	if 1 > len(req.SendBody.Street) || len(req.SendBody.Street) > 99 {
-		return &pb.OpenCardReply{Status: "街道错误"}, nil
-	}
+	req.SendBody.Street = "Sungang"
+	//if 1 > len(req.SendBody.Street) || len(req.SendBody.Street) > 99 {
+	//	return &pb.OpenCardReply{Status: "街道错误"}, nil
+	//}
 
-	if 1 > len(req.SendBody.City) || len(req.SendBody.City) > 99 {
-		return &pb.OpenCardReply{Status: "城市错误"}, nil
-	}
+	req.SendBody.City = "shenzhen"
+	//if 1 > len(req.SendBody.City) || len(req.SendBody.City) > 99 {
+	//	return &pb.OpenCardReply{Status: "城市错误"}, nil
+	//}
 
 	//if 1 > len(req.SendBody.Country) || len(req.SendBody.Country) > 99 {
 	//	return &pb.OpenCardReply{Status: "国家错误"}, nil
 	//}
 
-	if 1 > len(req.SendBody.PostalCode) || len(req.SendBody.PostalCode) > 99 {
-		return &pb.OpenCardReply{Status: "邮政编码错误"}, nil
-	}
+	req.SendBody.PostalCode = "518000"
+	//if 1 > len(req.SendBody.PostalCode) || len(req.SendBody.PostalCode) > 99 {
+	//	return &pb.OpenCardReply{Status: "邮政编码错误"}, nil
+	//}
 
-	if 1 > len(req.SendBody.BirthDate) || len(req.SendBody.BirthDate) > 99 {
-		return &pb.OpenCardReply{Status: "生日错误"}, nil
-	}
+	req.SendBody.BirthDate = "1983-10-10"
+	//if 1 > len(req.SendBody.BirthDate) || len(req.SendBody.BirthDate) > 99 {
+	//	return &pb.OpenCardReply{Status: "生日错误"}, nil
+	//}
 
 	var (
 		HolderID        string
@@ -917,40 +923,40 @@ func (uuc *UserUseCase) OpenCard(ctx context.Context, req *pb.OpenCardRequest, u
 
 	//} else {
 	var (
-		products          *CardProductListResponse
-		productIdUse      string
-		productIdUseInt64 uint64
-		maxCardQuota      uint64
+		//products          *CardProductListResponse
+		productIdUse             = "1923750198816256002"
+		productIdUseInt64 uint64 = 1923750198816256002
+		maxCardQuota      uint64 = 100
 	)
-	products, err = GetCardProducts()
-	if nil == products || nil != err {
-		//fmt.Println("产品信息错误1")
-		return &pb.OpenCardReply{Status: "获取产品信息错误"}, nil
-	}
-
-	for _, v := range products.Rows {
-		if 0 < len(v.ProductId) && "ENABLED" == v.ProductStatus {
-			productIdUse = v.ProductId
-			maxCardQuota = v.MaxCardQuota
-			productIdUseInt64, err = strconv.ParseUint(productIdUse, 10, 64)
-			if nil != err {
-				//fmt.Println("产品信息错误2")
-				return &pb.OpenCardReply{Status: "获取产品信息错误"}, nil
-			}
-			//fmt.Println("当前选择产品信息", productIdUse, maxCardQuota, v)
-			break
-		}
-	}
-
-	if 0 >= maxCardQuota {
-		//fmt.Println("产品信息错误3")
-		return &pb.OpenCardReply{Status: "获取产品信息错误,额度0"}, nil
-	}
-
-	if 0 >= productIdUseInt64 {
-		//fmt.Println("产品信息错误4")
-		return &pb.OpenCardReply{Status: "获取产品信息错误,产品id0"}, nil
-	}
+	//products, err = GetCardProducts()
+	//if nil == products || nil != err {
+	//	//fmt.Println("产品信息错误1")
+	//	return &pb.OpenCardReply{Status: "获取产品信息错误"}, nil
+	//}
+	//
+	//for _, v := range products.Rows {
+	//	if 0 < len(v.ProductId) && "ENABLED" == v.ProductStatus {
+	//		productIdUse = v.ProductId
+	//		maxCardQuota = v.MaxCardQuota
+	//		productIdUseInt64, err = strconv.ParseUint(productIdUse, 10, 64)
+	//		if nil != err {
+	//			//fmt.Println("产品信息错误2")
+	//			return &pb.OpenCardReply{Status: "获取产品信息错误"}, nil
+	//		}
+	//		//fmt.Println("当前选择产品信息", productIdUse, maxCardQuota, v)
+	//		break
+	//	}
+	//}
+	//
+	//if 0 >= maxCardQuota {
+	//	//fmt.Println("产品信息错误3")
+	//	return &pb.OpenCardReply{Status: "获取产品信息错误,额度0"}, nil
+	//}
+	//
+	//if 0 >= productIdUseInt64 {
+	//	//fmt.Println("产品信息错误4")
+	//	return &pb.OpenCardReply{Status: "获取产品信息错误,产品id0"}, nil
+	//}
 
 	// 请求
 	var (
