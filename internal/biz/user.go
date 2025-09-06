@@ -832,6 +832,7 @@ func (uuc *UserUseCase) OpenCard(ctx context.Context, req *pb.OpenCardRequest, u
 	//	return &pb.OpenCardReply{Status: "城市错误"}, nil
 	//}
 
+	req.SendBody.Country = "China"
 	//if 1 > len(req.SendBody.Country) || len(req.SendBody.Country) > 99 {
 	//	return &pb.OpenCardReply{Status: "国家错误"}, nil
 	//}
