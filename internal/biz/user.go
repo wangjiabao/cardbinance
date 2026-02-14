@@ -1672,14 +1672,23 @@ type AmountItem struct {
 func GetCardProducts() (*CardProductListResponse, error) {
 	baseURL := "http://120.79.173.55:9102/prod-api/vcc/api/v1/cards/products/all"
 
-	reqBody := map[string]interface{}{
-		"merchantId": "322338",
+	// 关键：把 pageQuery 的默认字段也显式传上，保证你和服务端验签字段一致
+	reqParams := map[string]interface{}{
+		"merchantId":    "322338",
+		"pageNum":       1,
+		"pageSize":      20,
+		"orderByColumn": "createTime",
+		"isAsc":         "desc",
 	}
 
-	sign := GenerateSign(reqBody, "j4gqNRcpTDJr50AP2xd9obKWZIKWbeo9")
+	sign := GenerateSign(reqParams, "j4gqNRcpTDJr50AP2xd9obKWZIKWbeo9")
 
 	params := url.Values{}
-	params.Set("merchantId", "322338")
+	params.Set("merchantId", reqParams["merchantId"].(string))
+	params.Set("pageNum", fmt.Sprintf("%v", reqParams["pageNum"]))
+	params.Set("pageSize", fmt.Sprintf("%v", reqParams["pageSize"]))
+	params.Set("orderByColumn", reqParams["orderByColumn"].(string))
+	params.Set("isAsc", reqParams["isAsc"].(string))
 	params.Set("sign", sign)
 
 	fullURL := fmt.Sprintf("%s?%s", baseURL, params.Encode())
@@ -1688,38 +1697,26 @@ func GetCardProducts() (*CardProductListResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	req.Header.Set("Content-Language", "zh_CN")
 
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-	}
+	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
-	defer func(Body io.ReadCloser) {
-		errTwo := Body.Close()
-		if errTwo != nil {
+	defer resp.Body.Close()
 
-		}
-	}(resp.Body)
-
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
 	//fmt.Println("响应报文:", string(body))
 
 	var result CardProductListResponse
-	err = json.Unmarshal(body, &result)
-	if err != nil {
+	if err := json.Unmarshal(body, &result); err != nil {
 		fmt.Println("JSON 解析失败:", err)
 		return nil, err
 	}
-
-	//fmt.Println(result)
-
 	return &result, nil
 }
 
