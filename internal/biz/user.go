@@ -934,6 +934,7 @@ func (uuc *UserUseCase) OpenCard(ctx context.Context, req *pb.OpenCardRequest, u
 	}
 
 	for _, v := range products.Rows {
+		fmt.Println("当前选择产品信息", v)
 		if 0 < len(v.ProductId) && "ENABLED" == v.ProductStatus {
 			productIdUse = v.ProductId
 			maxCardQuota = v.MaxCardQuota
