@@ -923,8 +923,8 @@ func (uuc *UserUseCase) OpenCard(ctx context.Context, req *pb.OpenCardRequest, u
 	//} else {
 	var (
 		products          *CardProductListResponse
-		productIdUse             = "1923750198816256002"
-		productIdUseInt64 uint64 = 1923750198816256002
+		productIdUse             = "1895024505572143106"
+		productIdUseInt64 uint64 = 1895024505572143106
 		maxCardQuota      uint64 = 100
 	)
 	products, err = GetCardProducts()
@@ -934,17 +934,17 @@ func (uuc *UserUseCase) OpenCard(ctx context.Context, req *pb.OpenCardRequest, u
 	}
 
 	for _, v := range products.Rows {
-		fmt.Println("当前选择产品信息", v)
-		if 0 < len(v.ProductId) && "ENABLED" == v.ProductStatus {
+		//fmt.Println("当前选择产品信息", v)
+		if 0 < len(v.ProductId) && "ENABLED" == v.ProductStatus && "VIRTUAL_CARD" == v.ModeType {
 			productIdUse = v.ProductId
 			maxCardQuota = v.MaxCardQuota
 			productIdUseInt64, err = strconv.ParseUint(productIdUse, 10, 64)
 			if nil != err {
-				//fmt.Println("产品信息错误2")
+				fmt.Println("产品信息错误2")
 				return &pb.OpenCardReply{Status: "获取产品信息错误"}, nil
 			}
 			fmt.Println("当前选择产品信息", productIdUse, maxCardQuota, v)
-			//break
+			break
 		}
 	}
 
@@ -957,10 +957,6 @@ func (uuc *UserUseCase) OpenCard(ctx context.Context, req *pb.OpenCardRequest, u
 		//fmt.Println("产品信息错误4")
 		return &pb.OpenCardReply{Status: "获取产品信息错误,产品id0"}, nil
 	}
-
-	return &pb.OpenCardReply{
-		Status: "ok",
-	}, nil
 
 	// 请求
 	var (
