@@ -943,7 +943,7 @@ func (uuc *UserUseCase) OpenCard(ctx context.Context, req *pb.OpenCardRequest, u
 				fmt.Println("产品信息错误2")
 				return &pb.OpenCardReply{Status: "获取产品信息错误"}, nil
 			}
-			fmt.Println("当前选择产品信息", productIdUse, maxCardQuota, v)
+			//fmt.Println("当前选择产品信息", productIdUse, maxCardQuota, v)
 			break
 		}
 	}
