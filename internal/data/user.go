@@ -275,10 +275,6 @@ func (u *UserRepo) CreateUser(ctx context.Context, uc *biz.User) (*biz.User, err
 		user.Vip = uc.Vip
 	}
 
-	if 0 < uc.VipTwo {
-		user.VipTwo = uc.VipTwo
-	}
-
 	res := u.data.DB(ctx).Table("user").Create(&user)
 	if res.Error != nil || 0 >= res.RowsAffected {
 		return nil, errors.New(500, "CREATE_USER_ERROR", "用户创建失败")

@@ -507,25 +507,24 @@ func (uuc *UserUseCase) RewardList(ctx context.Context, req *pb.RewardListReques
 }
 
 // 无锁的
-
 func (uuc *UserUseCase) GetExistUserByAddressOrCreate(ctx context.Context, u *User, req *pb.EthAuthorizeRequest) (*User, error, string) {
 	var (
 		user          *User
 		recommendUser *UserRecommend
 		err           error
-		configs       []*Config
-		vipMax        uint64
+		//configs       []*Config
+		//vipMax        uint64
 	)
 
 	// 配置
-	configs, err = uuc.repo.GetConfigByKeys("vip_max")
-	if nil != configs {
-		for _, vConfig := range configs {
-			if "vip_max" == vConfig.KeyName {
-				vipMax, _ = strconv.ParseUint(vConfig.Value, 10, 64)
-			}
-		}
-	}
+	//configs, err = uuc.repo.GetConfigByKeys("vip_max")
+	//if nil != configs {
+	//	for _, vConfig := range configs {
+	//		if "vip_max" == vConfig.KeyName {
+	//			vipMax, _ = strconv.ParseUint(vConfig.Value, 10, 64)
+	//		}
+	//	}
+	//}
 
 	recommendUser = &UserRecommend{
 		ID:            0,
@@ -537,35 +536,25 @@ func (uuc *UserUseCase) GetExistUserByAddressOrCreate(ctx context.Context, u *Us
 	if nil == user && nil == err {
 		code := req.SendBody.Code // 查询推荐码 abf00dd52c08a9213f225827bc3fb100 md5 dhbmachinefirst
 		if "abf00dd52c08a9213f225827bc3fb100" != code {
-			if "abf00dd52c08a9213f225827bc3fb100other" != code {
-				if 1 >= len(code) {
-					return nil, errors.New(500, "USER_ERROR", "无效的推荐码1"), "无效的推荐码"
-				}
-				var (
-					userRecommend *User
-				)
+			if 1 >= len(code) {
+				return nil, errors.New(500, "USER_ERROR", "无效的推荐码1"), "无效的推荐码"
+			}
+			var (
+				userRecommend *User
+			)
 
-				userRecommend, err = uuc.repo.GetUserByAddress(code)
-				if nil == userRecommend || err != nil {
-					return nil, errors.New(500, "USER_ERROR", "无效的推荐码1"), "无效的推荐码"
-				}
+			userRecommend, err = uuc.repo.GetUserByAddress(code)
+			if nil == userRecommend || err != nil {
+				return nil, errors.New(500, "USER_ERROR", "无效的推荐码1"), "无效的推荐码"
+			}
 
-				// 查询推荐人的相关信息
-				recommendUser, err = uuc.repo.GetUserRecommendByUserId(userRecommend.ID)
-				if nil == recommendUser || err != nil {
-					return nil, errors.New(500, "USER_ERROR", "无效的推荐码3"), "无效的推荐码3"
-				}
-
-				if 30 == userRecommend.VipTwo {
-					u.VipTwo = 30
-				}
-
-			} else {
-				u.Vip = 30
-				u.VipTwo = 30
+			// 查询推荐人的相关信息
+			recommendUser, err = uuc.repo.GetUserRecommendByUserId(userRecommend.ID)
+			if nil == recommendUser || err != nil {
+				return nil, errors.New(500, "USER_ERROR", "无效的推荐码3"), "无效的推荐码3"
 			}
 		} else {
-			u.Vip = vipMax
+			u.Vip = 15
 		}
 
 		if err = uuc.tx.ExecTx(ctx, func(ctx context.Context) error { // 事务
@@ -636,18 +625,22 @@ func (uuc *UserUseCase) SetVip(ctx context.Context, req *pb.SetVipRequest, userI
 		return &pb.SetVipReply{Status: "目标用户不存在"}, nil
 	}
 
-	if toUser.VipTwo != user.VipTwo {
-		return &pb.SetVipReply{Status: "vip等级不是统一系统账户"}, nil
-	}
+	//if toUser.VipTwo != user.VipTwo {
+	//	return &pb.SetVipReply{Status: "vip等级不是统一系统账户"}, nil
+	//}
 
-	if 0 >= toUser.VipTwo {
-		if 0 > req.SendBody.Vip || 9 < req.SendBody.Vip {
-			return &pb.SetVipReply{Status: "vip等级必须在0-9之间"}, nil
-		}
-	} else {
-		if 0 > req.SendBody.Vip || 29 < req.SendBody.Vip {
-			return &pb.SetVipReply{Status: "vip等级必须在0-29之间"}, nil
-		}
+	//if 0 >= toUser.VipTwo {
+	//	if 0 > req.SendBody.Vip || 9 < req.SendBody.Vip {
+	//		return &pb.SetVipReply{Status: "vip等级必须在0-9之间"}, nil
+	//	}
+	//} else {
+	//	if 0 > req.SendBody.Vip || 29 < req.SendBody.Vip {
+	//		return &pb.SetVipReply{Status: "vip等级必须在0-29之间"}, nil
+	//	}
+	//}
+
+	if 0 > req.SendBody.Vip || 9 < req.SendBody.Vip {
+		return &pb.SetVipReply{Status: "vip等级必须在0-9之间"}, nil
 	}
 
 	if req.SendBody.Vip >= user.Vip {
@@ -788,17 +781,22 @@ func (uuc *UserUseCase) OpenCard(ctx context.Context, req *pb.OpenCardRequest, u
 		return &pb.OpenCardReply{Status: "已经提交开卡信息"}, nil
 	}
 
-	if 0 >= user.VipTwo {
-		if 10 > uint64(user.Amount) {
-			return &pb.OpenCardReply{Status: "账号余额不足10u"}, nil
-		}
-		cardAmount = 10
-	} else {
-		if 30 > uint64(user.Amount) {
-			return &pb.OpenCardReply{Status: "账号余额不足30u"}, nil
-		}
-		cardAmount = 30
+	//if 0 >= user.VipTwo {
+	//	if 10 > uint64(user.Amount) {
+	//		return &pb.OpenCardReply{Status: "账号余额不足10u"}, nil
+	//	}
+	//	cardAmount = 10
+	//} else {
+	//	if 30 > uint64(user.Amount) {
+	//		return &pb.OpenCardReply{Status: "账号余额不足30u"}, nil
+	//	}
+	//	cardAmount = 30
+	//}
+
+	if 15 > uint64(user.Amount) {
+		return &pb.OpenCardReply{Status: "账号余额不足15u"}, nil
 	}
+	cardAmount = 15
 
 	if 1 > len(req.SendBody.Email) || len(req.SendBody.Email) > 99 {
 		return &pb.OpenCardReply{Status: "邮箱错误"}, nil
@@ -924,40 +922,44 @@ func (uuc *UserUseCase) OpenCard(ctx context.Context, req *pb.OpenCardRequest, u
 
 	//} else {
 	var (
-		//products          *CardProductListResponse
+		products          *CardProductListResponse
 		productIdUse             = "1923750198816256002"
 		productIdUseInt64 uint64 = 1923750198816256002
 		maxCardQuota      uint64 = 100
 	)
-	//products, err = GetCardProducts()
-	//if nil == products || nil != err {
-	//	//fmt.Println("产品信息错误1")
-	//	return &pb.OpenCardReply{Status: "获取产品信息错误"}, nil
-	//}
-	//
-	//for _, v := range products.Rows {
-	//	if 0 < len(v.ProductId) && "ENABLED" == v.ProductStatus {
-	//		productIdUse = v.ProductId
-	//		maxCardQuota = v.MaxCardQuota
-	//		productIdUseInt64, err = strconv.ParseUint(productIdUse, 10, 64)
-	//		if nil != err {
-	//			//fmt.Println("产品信息错误2")
-	//			return &pb.OpenCardReply{Status: "获取产品信息错误"}, nil
-	//		}
-	//		//fmt.Println("当前选择产品信息", productIdUse, maxCardQuota, v)
-	//		break
-	//	}
-	//}
-	//
-	//if 0 >= maxCardQuota {
-	//	//fmt.Println("产品信息错误3")
-	//	return &pb.OpenCardReply{Status: "获取产品信息错误,额度0"}, nil
-	//}
-	//
-	//if 0 >= productIdUseInt64 {
-	//	//fmt.Println("产品信息错误4")
-	//	return &pb.OpenCardReply{Status: "获取产品信息错误,产品id0"}, nil
-	//}
+	products, err = GetCardProducts()
+	if nil == products || nil != err {
+		//fmt.Println("产品信息错误1")
+		return &pb.OpenCardReply{Status: "获取产品信息错误"}, nil
+	}
+
+	for _, v := range products.Rows {
+		if 0 < len(v.ProductId) && "ENABLED" == v.ProductStatus {
+			productIdUse = v.ProductId
+			maxCardQuota = v.MaxCardQuota
+			productIdUseInt64, err = strconv.ParseUint(productIdUse, 10, 64)
+			if nil != err {
+				//fmt.Println("产品信息错误2")
+				return &pb.OpenCardReply{Status: "获取产品信息错误"}, nil
+			}
+			fmt.Println("当前选择产品信息", productIdUse, maxCardQuota, v)
+			//break
+		}
+	}
+
+	if 0 >= maxCardQuota {
+		//fmt.Println("产品信息错误3")
+		return &pb.OpenCardReply{Status: "获取产品信息错误,额度0"}, nil
+	}
+
+	if 0 >= productIdUseInt64 {
+		//fmt.Println("产品信息错误4")
+		return &pb.OpenCardReply{Status: "获取产品信息错误,产品id0"}, nil
+	}
+
+	return &pb.OpenCardReply{
+		Status: "ok",
+	}, nil
 
 	// 请求
 	var (
