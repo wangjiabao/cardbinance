@@ -470,73 +470,73 @@ func (u *UserService) OpenCardTwo(ctx context.Context, req *pb.OpenCardRequest) 
 }
 
 func (u *UserService) OpenCardTwoCode(ctx context.Context, req *pb.OpenCardTwoCodeRequest) (*pb.OpenCardTwoCodeReply, error) {
-	//// 在上下文 context 中取出 claims 对象
-	//var (
-	//	err    error
-	//	userId uint64
-	//)
-	//
-	//if claims, ok := jwt.FromContext(ctx); ok {
-	//	c := claims.(jwt2.MapClaims)
-	//	if c["UserId"] == nil {
-	//		return &pb.OpenCardTwoCodeReply{
-	//			Status: "无效TOKEN",
-	//		}, nil
-	//	}
-	//
-	//	userId = uint64(c["UserId"].(float64))
-	//}
-	//
-	//var (
-	//	user *biz.User
-	//)
-	//user, err = u.uuc.GetUserDataById(userId)
-	//if nil != err {
-	//	return &pb.OpenCardTwoCodeReply{
-	//		Status: "无效TOKEN",
-	//	}, nil
-	//}
-	//
-	//if 1 == user.IsDelete {
-	//	return &pb.OpenCardTwoCodeReply{
-	//		Status: "用户已删除",
-	//	}, nil
-	//}
-	//
-	//var (
-	//	res             bool
-	//	addressFromSign string
-	//)
-	//if 10 >= len(req.SendBody.Sign) {
-	//	return &pb.OpenCardTwoCodeReply{
-	//		Status: "签名错误",
-	//	}, nil
-	//}
-	//
-	//var (
-	//	contentStr string
-	//)
-	//contentStr, err = u.uuc.GetAddressNonce(ctx, user.Address)
-	//if nil != err {
-	//	return &pb.OpenCardTwoCodeReply{
-	//		Status: "错误",
-	//	}, nil
-	//}
-	//if 0 >= len(contentStr) {
-	//	return &pb.OpenCardTwoCodeReply{
-	//		Status: "错误nonce",
-	//	}, nil
-	//}
-	//content := []byte(contentStr)
-	//
-	//res, addressFromSign = verifySig(req.SendBody.Sign, content)
-	//if !res || addressFromSign != user.Address {
-	//	return &pb.OpenCardTwoCodeReply{
-	//		Status: "签名错误",
-	//	}, nil
-	//}
+	// 在上下文 context 中取出 claims 对象
+	var (
+		err    error
+		userId uint64
+	)
 
-	return u.uuc.OpenCardTwoCode(ctx, req, 572)
+	if claims, ok := jwt.FromContext(ctx); ok {
+		c := claims.(jwt2.MapClaims)
+		if c["UserId"] == nil {
+			return &pb.OpenCardTwoCodeReply{
+				Status: "无效TOKEN",
+			}, nil
+		}
+
+		userId = uint64(c["UserId"].(float64))
+	}
+
+	var (
+		user *biz.User
+	)
+	user, err = u.uuc.GetUserDataById(userId)
+	if nil != err {
+		return &pb.OpenCardTwoCodeReply{
+			Status: "无效TOKEN",
+		}, nil
+	}
+
+	if 1 == user.IsDelete {
+		return &pb.OpenCardTwoCodeReply{
+			Status: "用户已删除",
+		}, nil
+	}
+
+	var (
+		res             bool
+		addressFromSign string
+	)
+	if 10 >= len(req.SendBody.Sign) {
+		return &pb.OpenCardTwoCodeReply{
+			Status: "签名错误",
+		}, nil
+	}
+
+	var (
+		contentStr string
+	)
+	contentStr, err = u.uuc.GetAddressNonce(ctx, user.Address)
+	if nil != err {
+		return &pb.OpenCardTwoCodeReply{
+			Status: "错误",
+		}, nil
+	}
+	if 0 >= len(contentStr) {
+		return &pb.OpenCardTwoCodeReply{
+			Status: "错误nonce",
+		}, nil
+	}
+	content := []byte(contentStr)
+
+	res, addressFromSign = verifySig(req.SendBody.Sign, content)
+	if !res || addressFromSign != user.Address {
+		return &pb.OpenCardTwoCodeReply{
+			Status: "签名错误",
+		}, nil
+	}
+
+	return u.uuc.OpenCardTwoCode(ctx, req, userId)
 }
 
 func (u *UserService) AmountToCard(ctx context.Context, req *pb.AmountToCardRequest) (*pb.AmountToCardReply, error) {
