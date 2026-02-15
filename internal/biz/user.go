@@ -1386,7 +1386,7 @@ func (uuc *UserUseCase) OpenCardTwoCode(ctx context.Context, req *pb.OpenCardTwo
 		return &pb.OpenCardTwoCodeReply{Status: "输入激活码"}, nil
 	}
 
-	if 5 > len(req.SendBody.Code) {
+	if 5 > len(req.SendBody.Pin) {
 		return &pb.OpenCardTwoCodeReply{Status: "输入pin"}, nil
 	}
 
