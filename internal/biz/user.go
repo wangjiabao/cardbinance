@@ -1408,7 +1408,7 @@ func (uuc *UserUseCase) OpenCardTwoCode(ctx context.Context, req *pb.OpenCardTwo
 		return &pb.OpenCardTwoCodeReply{Status: "激活实体卡失败"}, nil
 	}
 
-	if "ACTIVATING" == activatePhysicalCardr.Data.CardStatus || "ACTIVE" == activatePhysicalCardr.Data.CardStatus || "INACTIVE" == activatePhysicalCardr.Data.CardStatus {
+	if "ACTIVATING" == activatePhysicalCardr.Data.CardStatus || "ACTIVE" == activatePhysicalCardr.Data.CardStatus {
 		if err = uuc.tx.ExecTx(ctx, func(ctx context.Context) error { // 事务
 			err = uuc.repo.UpdateCardTwoActive(ctx, userId)
 			if nil != err {
@@ -1837,7 +1837,7 @@ type ActivateCardResponse struct {
 	Code int    `json:"code"`
 	Msg  string `json:"msg"`
 	Data struct {
-		CardID     uint64 `json:"cardId"`
+		CardID     string `json:"cardId"`
 		CardStatus string `json:"cardStatus"` // ACTIVE / ACTIVATING
 	} `json:"data"`
 	TraceId string `json:"traceId"`
