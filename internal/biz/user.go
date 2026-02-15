@@ -209,7 +209,8 @@ func (uuc *UserUseCase) GetUserById(userId uint64) (*pb.GetUserReply, error) {
 
 	cardStatus := uint64(0)
 	var (
-		cardAmount string
+		cardAmount    string
+		cardAmountTwo string
 	)
 	if "no" == user.CardOrderId {
 		cardStatus = 0
@@ -233,9 +234,28 @@ func (uuc *UserUseCase) GetUserById(userId uint64) (*pb.GetUserReply, error) {
 		}
 	}
 
+	if "no" == user.CardIdTwo {
+		var (
+			resCard *CardInfoResponse
+		)
+		resCard, err = GetCardInfoRequestWithSign(user.CardIdTwo)
+		if nil == resCard || 200 != resCard.Code || err != nil {
+
+		} else {
+			if "ACTIVE" == resCard.Data.CardStatus {
+				cardAmountTwo = resCard.Data.Balance
+			}
+		}
+	}
+
 	cardTwo := user.CardTwo
 	if 1 < cardTwo {
 		cardTwo = 1
+	}
+
+	cardType := uint64(1)
+	if 1 < user.CardType {
+		cardType = user.CardType
 	}
 
 	return &pb.GetUserReply{
@@ -252,8 +272,9 @@ func (uuc *UserUseCase) GetUserById(userId uint64) (*pb.GetUserReply, error) {
 		CardStatusTwo:    cardTwo,
 		CanVip:           user.CanVip,
 		VipThree:         user.VipThree,
-		CardTwoType:      user.CardType,
+		CardTwoType:      cardType,
 		CardNumTwo:       user.CardNumberTwo,
+		CardAmountTwo:    cardAmountTwo,
 	}, nil
 }
 

@@ -168,6 +168,7 @@ message GetUserReply {
 	string cardNumTwo = 14; // 我的实体卡号
 	uint64 cardStatusTwo = 11; //  实体卡激活状态
 	uint64 cardTwoType = 15; //  实体卡类型
+	string cardAmountTwo = 16; // 我的卡额度
 }
 
 message RecommendListRequest {
