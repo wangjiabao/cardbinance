@@ -178,6 +178,30 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /api/app_server/open_card_two_code:
+        post:
+            tags:
+                - User
+            operationId: User_OpenCardTwoCode
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/OpenCardTwoCodeRequest_SendBody'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/OpenCardTwoCodeReply'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /api/app_server/order_list:
         get:
             tags:
@@ -186,6 +210,10 @@ paths:
             operationId: User_OrderList
             parameters:
                 - name: page
+                  in: query
+                  schema:
+                    type: string
+                - name: cardType
                   in: query
                   schema:
                     type: string
@@ -361,6 +389,8 @@ components:
                     type: string
                 amount:
                     type: string
+                cardType:
+                    type: string
         AmountToReply:
             type: object
             properties:
@@ -422,8 +452,6 @@ components:
                     type: string
                 cardStatus:
                     type: string
-                cardStatusTwo:
-                    type: string
                 cardAmount:
                     type: string
                 recommendAddress:
@@ -434,6 +462,12 @@ components:
                 canVip:
                     type: string
                 vipThree:
+                    type: string
+                cardNumTwo:
+                    type: string
+                cardStatusTwo:
+                    type: string
+                cardTwoType:
                     type: string
         GoogleProtobufAny:
             type: object
@@ -469,6 +503,8 @@ components:
             properties:
                 sign:
                     type: string
+                cardType:
+                    type: string
         OpenCardReply:
             type: object
             properties:
@@ -498,6 +534,24 @@ components:
                 postalCode:
                     type: string
                 birthDate:
+                    type: string
+                cardNumber:
+                    type: string
+                cardType:
+                    type: string
+        OpenCardTwoCodeReply:
+            type: object
+            properties:
+                status:
+                    type: string
+        OpenCardTwoCodeRequest_SendBody:
+            type: object
+            properties:
+                code:
+                    type: string
+                pin:
+                    type: string
+                sign:
                     type: string
         OrderListReply:
             type: object

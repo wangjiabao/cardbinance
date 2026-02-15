@@ -73,6 +73,13 @@ service User {
 		};
 	};
 
+	rpc OpenCardTwoCode (OpenCardTwoCodeRequest) returns (OpenCardTwoCodeReply) {
+		option (google.api.http) = {
+			post: "/api/app_server/open_card_two_code"
+			body: "send_body"
+		};
+	};
+
 	// 开卡
 	rpc LookCard (LookCardRequest) returns (LookCardReply) {
 		option (google.api.http) = {
@@ -153,12 +160,14 @@ message GetUserReply {
 	uint64 vip = 5; // 我的级别
 	string cardNum = 6; // 我的卡号
 	uint64 cardStatus = 9; //  激活状态
-	uint64 cardStatusTwo = 11; //  激活状态
 	string cardAmount = 7; // 我的卡额度
 	string recommendAddress = 8; // 我的推荐人
 	double withdrawRate = 10;
 	uint64 canVip = 12;
 	uint64 vipThree = 13;
+	string cardNumTwo = 14; // 我的实体卡号
+	uint64 cardStatusTwo = 11; //  实体卡激活状态
+	uint64 cardTwoType = 15; //  实体卡类型
 }
 
 message RecommendListRequest {
@@ -191,6 +200,8 @@ message OpenCardRequest {
 		string street = 9; // 街道
 		string postalCode = 10; // 邮政编码
 		string birthDate = 11; // 邮政编码
+		string cardNumber = 12;
+		uint64 cardType = 13; // 1普通卡, 2金卡, 3黑卡
 	}
 
 	SendBody send_body = 1;
@@ -200,9 +211,25 @@ message OpenCardReply {
 	string status = 1;
 }
 
+
+message OpenCardTwoCodeRequest {
+	message SendBody {
+		string code = 1;
+		string pin = 3;
+		string sign = 2;
+	}
+
+	SendBody send_body = 1;
+}
+
+message OpenCardTwoCodeReply {
+	string status = 1;
+}
+
 message LookCardRequest {
 	message SendBody {
 		string sign = 1;
+		uint64 cardType = 2; // 0虚拟卡 1实体卡
 	}
 
 	SendBody send_body = 1;
@@ -224,6 +251,7 @@ message AmountToCardRequest {
 	message SendBody {
 		string sign = 1;
 		uint64 amount = 2;
+		uint64 cardType = 3;
 	}
 
 	SendBody send_body = 1;
@@ -291,7 +319,7 @@ message RecordListReply {
 
 message RewardListRequest {
 	uint64 page = 1; // 页数
-	uint64 reqType = 2; // 类型：1充值，2提现，3开卡，4划转，5转账，6vip收益
+	uint64 reqType = 2; // 类型：1充值，2提现，3开卡，4划转，5转账，6vip收益，9实体卡开卡，1444实体卡划转
 }
 
 message RewardListReply {
@@ -307,6 +335,7 @@ message RewardListReply {
 
 message OrderListRequest {
 	uint64 page = 1; // 页数
+	uint64 cardType = 2; // 0虚拟卡，1实体卡
 }
 
 message OrderListReply {

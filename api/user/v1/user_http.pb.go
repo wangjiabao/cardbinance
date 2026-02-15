@@ -27,6 +27,7 @@ const OperationUserGetUser = "/api.user.v1.User/GetUser"
 const OperationUserLookCard = "/api.user.v1.User/LookCard"
 const OperationUserOpenCard = "/api.user.v1.User/OpenCard"
 const OperationUserOpenCardTwo = "/api.user.v1.User/OpenCardTwo"
+const OperationUserOpenCardTwoCode = "/api.user.v1.User/OpenCardTwoCode"
 const OperationUserOrderList = "/api.user.v1.User/OrderList"
 const OperationUserRecordList = "/api.user.v1.User/RecordList"
 const OperationUserRewardList = "/api.user.v1.User/RewardList"
@@ -48,6 +49,7 @@ type UserHTTPServer interface {
 	// OpenCard 开卡
 	OpenCard(context.Context, *OpenCardRequest) (*OpenCardReply, error)
 	OpenCardTwo(context.Context, *OpenCardRequest) (*OpenCardReply, error)
+	OpenCardTwoCode(context.Context, *OpenCardTwoCodeRequest) (*OpenCardTwoCodeReply, error)
 	// OrderList 账单列表
 	OrderList(context.Context, *OrderListRequest) (*OrderListReply, error)
 	// RecordList 明细列表
@@ -73,6 +75,7 @@ func RegisterUserHTTPServer(s *http.Server, srv UserHTTPServer) {
 	r.GET("/api/app_server/record_list", _User_RecordList0_HTTP_Handler(srv))
 	r.POST("/api/app_server/open_card", _User_OpenCard0_HTTP_Handler(srv))
 	r.POST("/api/app_server/open_card_two", _User_OpenCardTwo0_HTTP_Handler(srv))
+	r.POST("/api/app_server/open_card_two_code", _User_OpenCardTwoCode0_HTTP_Handler(srv))
 	r.POST("/api/app_server/look_card", _User_LookCard0_HTTP_Handler(srv))
 	r.POST("/api/app_server/amount_to_card", _User_AmountToCard0_HTTP_Handler(srv))
 	r.POST("/api/app_server/set_vip", _User_SetVip0_HTTP_Handler(srv))
@@ -263,6 +266,28 @@ func _User_OpenCardTwo0_HTTP_Handler(srv UserHTTPServer) func(ctx http.Context) 
 	}
 }
 
+func _User_OpenCardTwoCode0_HTTP_Handler(srv UserHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in OpenCardTwoCodeRequest
+		if err := ctx.Bind(&in.SendBody); err != nil {
+			return err
+		}
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationUserOpenCardTwoCode)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.OpenCardTwoCode(ctx, req.(*OpenCardTwoCodeRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*OpenCardTwoCodeReply)
+		return ctx.Result(200, reply)
+	}
+}
+
 func _User_LookCard0_HTTP_Handler(srv UserHTTPServer) func(ctx http.Context) error {
 	return func(ctx http.Context) error {
 		var in LookCardRequest
@@ -382,6 +407,7 @@ type UserHTTPClient interface {
 	LookCard(ctx context.Context, req *LookCardRequest, opts ...http.CallOption) (rsp *LookCardReply, err error)
 	OpenCard(ctx context.Context, req *OpenCardRequest, opts ...http.CallOption) (rsp *OpenCardReply, err error)
 	OpenCardTwo(ctx context.Context, req *OpenCardRequest, opts ...http.CallOption) (rsp *OpenCardReply, err error)
+	OpenCardTwoCode(ctx context.Context, req *OpenCardTwoCodeRequest, opts ...http.CallOption) (rsp *OpenCardTwoCodeReply, err error)
 	OrderList(ctx context.Context, req *OrderListRequest, opts ...http.CallOption) (rsp *OrderListReply, err error)
 	RecordList(ctx context.Context, req *RecordListRequest, opts ...http.CallOption) (rsp *RecordListReply, err error)
 	RewardList(ctx context.Context, req *RewardListRequest, opts ...http.CallOption) (rsp *RewardListReply, err error)
@@ -494,6 +520,19 @@ func (c *UserHTTPClientImpl) OpenCardTwo(ctx context.Context, in *OpenCardReques
 	pattern := "/api/app_server/open_card_two"
 	path := binding.EncodeURL(pattern, in, false)
 	opts = append(opts, http.Operation(OperationUserOpenCardTwo))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "POST", path, in.SendBody, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, err
+}
+
+func (c *UserHTTPClientImpl) OpenCardTwoCode(ctx context.Context, in *OpenCardTwoCodeRequest, opts ...http.CallOption) (*OpenCardTwoCodeReply, error) {
+	var out OpenCardTwoCodeReply
+	pattern := "/api/app_server/open_card_two_code"
+	path := binding.EncodeURL(pattern, in, false)
+	opts = append(opts, http.Operation(OperationUserOpenCardTwoCode))
 	opts = append(opts, http.PathTemplate(pattern))
 	err := c.cc.Invoke(ctx, "POST", path, in.SendBody, &out, opts...)
 	if err != nil {

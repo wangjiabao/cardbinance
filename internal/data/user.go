@@ -16,7 +16,9 @@ type User struct {
 	Address       string    `gorm:"type:varchar(100);default:'no'"`
 	Card          string    `gorm:"type:varchar(100);not null;default:'no'"`
 	CardOrderId   string    `gorm:"type:varchar(100);not null;default:'no'"`
+	CardIdTwo     string    `gorm:"type:varchar(100);not null;default:'no'"`
 	CardNumber    string    `gorm:"type:varchar(100);not null;default:'no'"`
+	CardNumberTwo string    `gorm:"type:varchar(100);not null;default:'no'"`
 	CardAmount    float64   `gorm:"type:decimal(65,20);not null"`
 	Amount        float64   `gorm:"type:decimal(65,20)"`
 	IsDelete      uint64    `gorm:"type:int"`
@@ -43,6 +45,7 @@ type User struct {
 	CardTwo       uint64    `gorm:"type:int"`
 	CanVip        uint64    `gorm:"type:int"`
 	VipThree      uint64    `gorm:"type:int"`
+	CardType      uint64    `gorm:"type:int"`
 }
 
 type CardTwo struct {
@@ -244,6 +247,9 @@ func (u *UserRepo) GetUserById(userId uint64) (*biz.User, error) {
 		CardTwo:       user.CardTwo,
 		CanVip:        user.CanVip,
 		VipThree:      user.VipThree,
+		CardNumberTwo: user.CardNumberTwo,
+		CardType:      user.CardType,
+		CardIdTwo:     user.CardIdTwo,
 	}, nil
 }
 
@@ -438,7 +444,10 @@ func (u *UserRepo) GetConfigByKeys(keys ...string) ([]*biz.Config, error) {
 
 // CreateCard .
 func (u *UserRepo) CreateCard(ctx context.Context, userId uint64, user *biz.User) error {
-	res := u.data.DB(ctx).Table("user").Where("id=?", userId).Where("amount>=?", user.Amount).Where("card_order_id=?", "no").
+	res := u.data.DB(ctx).Table("user").Where("id=?", userId).
+		Where("amount>=?", user.Amount).
+		Where("card_user_id=?", "0").
+		Where("card_order_id=?", "no").
 		Updates(map[string]interface{}{
 			"amount":         gorm.Expr("amount - ?", user.Amount),
 			"user_count":     gorm.Expr("user_count + ?", 1),
@@ -472,6 +481,134 @@ func (u *UserRepo) CreateCard(ctx context.Context, userId uint64, user *biz.User
 	resInsert := u.data.DB(ctx).Table("reward").Create(&reward)
 	if resInsert.Error != nil || 0 >= resInsert.RowsAffected {
 		return errors.New(500, "CREATE_LOCATION_ERROR", "信息创建失败")
+	}
+
+	return nil
+}
+
+func (u *UserRepo) UpdateCardNew(ctx context.Context, userId uint64, user *biz.User) error {
+	res := u.data.DB(ctx).Table("user").Where("id=?", userId).
+		Where("amount>=?", user.Amount).
+		Where("card_order_id=?", "no").
+		Updates(map[string]interface{}{
+			"amount":         gorm.Expr("amount - ?", user.Amount),
+			"user_count":     gorm.Expr("user_count + ?", 1),
+			"card_order_id":  "do",
+			"max_card_quota": user.MaxCardQuota,
+			"product_id":     user.ProductId,
+			"updated_at":     time.Now().Format("2006-01-02 15:04:05"),
+		})
+	if res.Error != nil || 0 >= res.RowsAffected {
+		return errors.New(500, "UPDATE_USER_ERROR", "用户信息修改失败")
+	}
+
+	var (
+		reward Reward
+	)
+
+	reward.UserId = userId
+	reward.Amount = user.Amount
+	reward.Reason = 3 // 给我分红的理由
+	resInsert := u.data.DB(ctx).Table("reward").Create(&reward)
+	if resInsert.Error != nil || 0 >= resInsert.RowsAffected {
+		return errors.New(500, "CREATE_LOCATION_ERROR", "信息创建失败")
+	}
+
+	return nil
+}
+
+// CreateCardTwoNew .
+func (u *UserRepo) CreateCardTwoNew(ctx context.Context, userId uint64, user *biz.User) error {
+	res := u.data.DB(ctx).Table("user").
+		Where("id=?", userId).
+		Where("card_user_id=?", "0").
+		Where("amount>=?", user.Amount).
+		Where("card_two=?", 0).
+		Updates(map[string]interface{}{
+			"amount":             gorm.Expr("amount - ?", user.Amount),
+			"user_count":         gorm.Expr("user_count + ?", 1),
+			"first_name":         user.FirstName,
+			"last_name":          user.LastName,
+			"email":              user.Email,
+			"phone":              user.Phone,
+			"country_code":       user.CountryCode,
+			"country":            user.Country,
+			"city":               user.City,
+			"street":             user.Street,
+			"postal_code":        user.PostalCode,
+			"birth_date":         user.BirthDate,
+			"max_card_quota_two": user.MaxCardQuota,
+			"card_user_id":       user.CardUserId,
+			"product_id_two":     user.ProductId,
+			"updated_at":         time.Now().Format("2006-01-02 15:04:05"),
+			"card_two":           1,
+			"card_number_two":    user.CardNumberTwo,
+			"card_type":          user.CardType,
+		})
+	if res.Error != nil || 0 >= res.RowsAffected {
+		return errors.New(500, "UPDATE_USER_ERROR", "用户信息修改失败")
+	}
+
+	var (
+		reward Reward
+	)
+
+	reward.UserId = userId
+	reward.Amount = user.Amount
+	reward.Reason = 9 // 给我分红的理由
+	resInsert := u.data.DB(ctx).Table("reward").Create(&reward)
+	if resInsert.Error != nil || 0 >= resInsert.RowsAffected {
+		return errors.New(500, "CREATE_LOCATION_ERROR", "信息创建失败")
+	}
+
+	return nil
+}
+
+// UpdateCardTwoNew .
+func (u *UserRepo) UpdateCardTwoNew(ctx context.Context, userId uint64, user *biz.User) error {
+	res := u.data.DB(ctx).Table("user").
+		Where("id=?", userId).
+		Where("amount>=?", user.Amount).
+		Where("card_two=?", 0).
+		Updates(map[string]interface{}{
+			"amount":             gorm.Expr("amount - ?", user.Amount),
+			"user_count":         gorm.Expr("user_count + ?", 1),
+			"max_card_quota_two": user.MaxCardQuota,
+			"product_id_two":     user.ProductId,
+			"updated_at":         time.Now().Format("2006-01-02 15:04:05"),
+			"card_two":           1,
+			"card_number_two":    user.CardNumberTwo,
+			"card_type":          user.CardType,
+		})
+	if res.Error != nil || 0 >= res.RowsAffected {
+		return errors.New(500, "UPDATE_USER_ERROR", "用户信息修改失败")
+	}
+
+	var (
+		reward Reward
+	)
+
+	reward.UserId = userId
+	reward.Amount = user.Amount
+	reward.Reason = 9 // 给我分红的理由
+	resInsert := u.data.DB(ctx).Table("reward").Create(&reward)
+	if resInsert.Error != nil || 0 >= resInsert.RowsAffected {
+		return errors.New(500, "CREATE_LOCATION_ERROR", "信息创建失败")
+	}
+
+	return nil
+}
+
+// UpdateCardTwoActive .
+func (u *UserRepo) UpdateCardTwoActive(ctx context.Context, userId uint64) error {
+	res := u.data.DB(ctx).Table("user").
+		Where("id=?", userId).
+		Updates(map[string]interface{}{
+			"updated_at": time.Now().Format("2006-01-02 15:04:05"),
+			"card_two":   4,
+		})
+	if res.Error != nil || 0 >= res.RowsAffected {
+		return errors.New(500, "UPDATE_USER_ERROR", "用户信息修改失败")
 	}
 
 	return nil
@@ -682,6 +819,32 @@ func (u *UserRepo) AmountToCard(ctx context.Context, userId uint64, amount float
 	return reward.ID, nil
 }
 
+// AmountToCardTwo .
+func (u *UserRepo) AmountToCardTwo(ctx context.Context, userId uint64, amount float64) (uint64, error) {
+	res := u.data.DB(ctx).Table("user").Where("id=?", userId).Where("amount>=?", amount).
+		Updates(map[string]interface{}{
+			"amount":     gorm.Expr("amount - ?", amount),
+			"updated_at": time.Now().Format("2006-01-02 15:04:05"),
+		})
+	if res.Error != nil || 0 >= res.RowsAffected {
+		return 0, errors.New(500, "UPDATE_USER_ERROR", "用户信息修改失败")
+	}
+
+	var (
+		reward Reward
+	)
+
+	reward.UserId = userId
+	reward.Amount = amount
+	reward.Reason = 144 // 给我分红的理由
+	resInsert := u.data.DB(ctx).Table("reward").Create(&reward)
+	if resInsert.Error != nil || 0 >= resInsert.RowsAffected {
+		return 0, errors.New(500, "CREATE_LOCATION_ERROR", "信息创建失败")
+	}
+
+	return reward.ID, nil
+}
+
 // AmountToCardReward .
 func (u *UserRepo) AmountToCardReward(ctx context.Context, userId uint64, amount float64, orderId string, rewardId uint64) error {
 	res := u.data.DB(ctx).Table("reward").Where("id=?", rewardId).
@@ -700,6 +863,33 @@ func (u *UserRepo) AmountToCardReward(ctx context.Context, userId uint64, amount
 	reward.UserId = userId
 	reward.Amount = amount
 	reward.Reason = 4 // 给我分红的理由
+	reward.Address = orderId
+	resInsert := u.data.DB(ctx).Table("reward").Create(&reward)
+	if resInsert.Error != nil || 0 >= resInsert.RowsAffected {
+		return errors.New(500, "CREATE_LOCATION_ERROR", "信息创建失败")
+	}
+
+	return nil
+}
+
+// AmountToCardTwoReward .
+func (u *UserRepo) AmountToCardTwoReward(ctx context.Context, userId uint64, amount float64, orderId string, rewardId uint64) error {
+	res := u.data.DB(ctx).Table("reward").Where("id=?", rewardId).
+		Updates(map[string]interface{}{
+			"one":        1,
+			"updated_at": time.Now().Format("2006-01-02 15:04:05"),
+		})
+	if res.Error != nil || 0 >= res.RowsAffected {
+		return errors.New(500, "UPDATE_REWARD_ERROR", "划转信息修改失败")
+	}
+
+	var (
+		reward Reward
+	)
+
+	reward.UserId = userId
+	reward.Amount = amount
+	reward.Reason = 1444 // 给我分红的理由
 	reward.Address = orderId
 	resInsert := u.data.DB(ctx).Table("reward").Create(&reward)
 	if resInsert.Error != nil || 0 >= resInsert.RowsAffected {
