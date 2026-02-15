@@ -19,21 +19,22 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	User_CreateNonce_FullMethodName     = "/api.user.v1.User/CreateNonce"
-	User_EthAuthorize_FullMethodName    = "/api.user.v1.User/EthAuthorize"
-	User_GetUser_FullMethodName         = "/api.user.v1.User/GetUser"
-	User_UserRecommend_FullMethodName   = "/api.user.v1.User/UserRecommend"
-	User_OrderList_FullMethodName       = "/api.user.v1.User/OrderList"
-	User_RewardList_FullMethodName      = "/api.user.v1.User/RewardList"
-	User_RecordList_FullMethodName      = "/api.user.v1.User/RecordList"
-	User_OpenCard_FullMethodName        = "/api.user.v1.User/OpenCard"
-	User_OpenCardTwo_FullMethodName     = "/api.user.v1.User/OpenCardTwo"
-	User_OpenCardTwoCode_FullMethodName = "/api.user.v1.User/OpenCardTwoCode"
-	User_LookCard_FullMethodName        = "/api.user.v1.User/LookCard"
-	User_AmountToCard_FullMethodName    = "/api.user.v1.User/AmountToCard"
-	User_SetVip_FullMethodName          = "/api.user.v1.User/SetVip"
-	User_AmountTo_FullMethodName        = "/api.user.v1.User/AmountTo"
-	User_Withdraw_FullMethodName        = "/api.user.v1.User/Withdraw"
+	User_CreateNonce_FullMethodName         = "/api.user.v1.User/CreateNonce"
+	User_EthAuthorize_FullMethodName        = "/api.user.v1.User/EthAuthorize"
+	User_GetUser_FullMethodName             = "/api.user.v1.User/GetUser"
+	User_UserRecommend_FullMethodName       = "/api.user.v1.User/UserRecommend"
+	User_OrderList_FullMethodName           = "/api.user.v1.User/OrderList"
+	User_RewardList_FullMethodName          = "/api.user.v1.User/RewardList"
+	User_RecordList_FullMethodName          = "/api.user.v1.User/RecordList"
+	User_OpenCard_FullMethodName            = "/api.user.v1.User/OpenCard"
+	User_OpenCardTwo_FullMethodName         = "/api.user.v1.User/OpenCardTwo"
+	User_OpenCardTwoCodeTest_FullMethodName = "/api.user.v1.User/OpenCardTwoCodeTest"
+	User_OpenCardTwoCode_FullMethodName     = "/api.user.v1.User/OpenCardTwoCode"
+	User_LookCard_FullMethodName            = "/api.user.v1.User/LookCard"
+	User_AmountToCard_FullMethodName        = "/api.user.v1.User/AmountToCard"
+	User_SetVip_FullMethodName              = "/api.user.v1.User/SetVip"
+	User_AmountTo_FullMethodName            = "/api.user.v1.User/AmountTo"
+	User_Withdraw_FullMethodName            = "/api.user.v1.User/Withdraw"
 )
 
 // UserClient is the client API for User service.
@@ -55,6 +56,7 @@ type UserClient interface {
 	// 开卡
 	OpenCard(ctx context.Context, in *OpenCardRequest, opts ...grpc.CallOption) (*OpenCardReply, error)
 	OpenCardTwo(ctx context.Context, in *OpenCardRequest, opts ...grpc.CallOption) (*OpenCardReply, error)
+	OpenCardTwoCodeTest(ctx context.Context, in *OpenCardTwoCodeTestRequest, opts ...grpc.CallOption) (*OpenCardTwoCodeTestReply, error)
 	OpenCardTwoCode(ctx context.Context, in *OpenCardTwoCodeRequest, opts ...grpc.CallOption) (*OpenCardTwoCodeReply, error)
 	// 开卡
 	LookCard(ctx context.Context, in *LookCardRequest, opts ...grpc.CallOption) (*LookCardReply, error)
@@ -157,6 +159,15 @@ func (c *userClient) OpenCardTwo(ctx context.Context, in *OpenCardRequest, opts 
 	return out, nil
 }
 
+func (c *userClient) OpenCardTwoCodeTest(ctx context.Context, in *OpenCardTwoCodeTestRequest, opts ...grpc.CallOption) (*OpenCardTwoCodeTestReply, error) {
+	out := new(OpenCardTwoCodeTestReply)
+	err := c.cc.Invoke(ctx, User_OpenCardTwoCodeTest_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userClient) OpenCardTwoCode(ctx context.Context, in *OpenCardTwoCodeRequest, opts ...grpc.CallOption) (*OpenCardTwoCodeReply, error) {
 	out := new(OpenCardTwoCodeReply)
 	err := c.cc.Invoke(ctx, User_OpenCardTwoCode_FullMethodName, in, out, opts...)
@@ -230,6 +241,7 @@ type UserServer interface {
 	// 开卡
 	OpenCard(context.Context, *OpenCardRequest) (*OpenCardReply, error)
 	OpenCardTwo(context.Context, *OpenCardRequest) (*OpenCardReply, error)
+	OpenCardTwoCodeTest(context.Context, *OpenCardTwoCodeTestRequest) (*OpenCardTwoCodeTestReply, error)
 	OpenCardTwoCode(context.Context, *OpenCardTwoCodeRequest) (*OpenCardTwoCodeReply, error)
 	// 开卡
 	LookCard(context.Context, *LookCardRequest) (*LookCardReply, error)
@@ -274,6 +286,9 @@ func (UnimplementedUserServer) OpenCard(context.Context, *OpenCardRequest) (*Ope
 }
 func (UnimplementedUserServer) OpenCardTwo(context.Context, *OpenCardRequest) (*OpenCardReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method OpenCardTwo not implemented")
+}
+func (UnimplementedUserServer) OpenCardTwoCodeTest(context.Context, *OpenCardTwoCodeTestRequest) (*OpenCardTwoCodeTestReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method OpenCardTwoCodeTest not implemented")
 }
 func (UnimplementedUserServer) OpenCardTwoCode(context.Context, *OpenCardTwoCodeRequest) (*OpenCardTwoCodeReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method OpenCardTwoCode not implemented")
@@ -468,6 +483,24 @@ func _User_OpenCardTwo_Handler(srv interface{}, ctx context.Context, dec func(in
 	return interceptor(ctx, in, info, handler)
 }
 
+func _User_OpenCardTwoCodeTest_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(OpenCardTwoCodeTestRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServer).OpenCardTwoCodeTest(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: User_OpenCardTwoCodeTest_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServer).OpenCardTwoCodeTest(ctx, req.(*OpenCardTwoCodeTestRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _User_OpenCardTwoCode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(OpenCardTwoCodeRequest)
 	if err := dec(in); err != nil {
@@ -618,6 +651,10 @@ var User_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "OpenCardTwo",
 			Handler:    _User_OpenCardTwo_Handler,
+		},
+		{
+			MethodName: "OpenCardTwoCodeTest",
+			Handler:    _User_OpenCardTwoCodeTest_Handler,
 		},
 		{
 			MethodName: "OpenCardTwoCode",

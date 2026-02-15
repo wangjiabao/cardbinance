@@ -207,7 +207,21 @@ func (u *UserRepo) GetUserByAddress(address string) (*biz.User, error) {
 		CardOrderId:   user.CardOrderId,
 		CreatedAt:     user.CreatedAt,
 		UpdatedAt:     user.UpdatedAt,
+		CardUserId:    user.CardUserId,
+		ProductId:     user.ProductId,
+		MaxCardQuota:  user.MaxCardQuota,
+		Email:         user.Email,
+		UserCount:     user.UserCount,
+		Country:       user.Country,
+		CountryCode:   user.CountryCode,
+		Phone:         user.Phone,
 		VipTwo:        user.VipTwo,
+		CardTwo:       user.CardTwo,
+		CanVip:        user.CanVip,
+		VipThree:      user.VipThree,
+		CardNumberTwo: user.CardNumberTwo,
+		CardType:      user.CardType,
+		CardIdTwo:     user.CardIdTwo,
 	}, nil
 }
 
@@ -605,7 +619,7 @@ func (u *UserRepo) UpdateCardTwoActive(ctx context.Context, userId uint64) error
 		Where("id=?", userId).
 		Updates(map[string]interface{}{
 			"updated_at": time.Now().Format("2006-01-02 15:04:05"),
-			"card_two":   4,
+			"card_two":   3,
 		})
 	if res.Error != nil || 0 >= res.RowsAffected {
 		return errors.New(500, "UPDATE_USER_ERROR", "用户信息修改失败")

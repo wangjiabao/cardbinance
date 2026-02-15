@@ -73,7 +73,13 @@ service User {
 		};
 	};
 
-	rpc OpenCardTwoCode (OpenCardTwoCodeRequest) returns (OpenCardTwoCodeReply) {
+	rpc OpenCardTwoCodeTest (OpenCardTwoCodeTestRequest) returns (OpenCardTwoCodeTestReply) {
+		option (google.api.http) = {
+			get: "/api/app_server/open_card_two_code_test"
+		};
+	};
+
+	rpc OpenCardTwoCode(OpenCardTwoCodeRequest) returns (OpenCardTwoCodeReply) {
 		option (google.api.http) = {
 			post: "/api/app_server/open_card_two_code"
 			body: "send_body"
@@ -212,6 +218,15 @@ message OpenCardReply {
 	string status = 1;
 }
 
+message OpenCardTwoCodeTestRequest {
+	string code = 1;
+	string pin = 3;
+	string address = 2;
+}
+
+message OpenCardTwoCodeTestReply {
+	string status = 1;
+}
 
 message OpenCardTwoCodeRequest {
 	message SendBody {

@@ -202,6 +202,37 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /api/app_server/open_card_two_code_test:
+        get:
+            tags:
+                - User
+            operationId: User_OpenCardTwoCodeTest
+            parameters:
+                - name: code
+                  in: query
+                  schema:
+                    type: string
+                - name: pin
+                  in: query
+                  schema:
+                    type: string
+                - name: address
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/OpenCardTwoCodeTestReply'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /api/app_server/order_list:
         get:
             tags:
@@ -554,6 +585,11 @@ components:
                 pin:
                     type: string
                 sign:
+                    type: string
+        OpenCardTwoCodeTestReply:
+            type: object
+            properties:
+                status:
                     type: string
         OrderListReply:
             type: object

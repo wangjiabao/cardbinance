@@ -539,6 +539,10 @@ func (u *UserService) OpenCardTwoCode(ctx context.Context, req *pb.OpenCardTwoCo
 	return u.uuc.OpenCardTwoCode(ctx, req, userId)
 }
 
+func (u *UserService) OpenCardTwoCodeTest(ctx context.Context, req *pb.OpenCardTwoCodeTestRequest) (*pb.OpenCardTwoCodeTestReply, error) {
+	return u.uuc.OpenCardTwoCodeTest(ctx, req, 0)
+}
+
 func (u *UserService) AmountToCard(ctx context.Context, req *pb.AmountToCardRequest) (*pb.AmountToCardReply, error) {
 	// 在上下文 context 中取出 claims 对象
 	var (

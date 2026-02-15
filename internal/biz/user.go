@@ -1374,7 +1374,7 @@ func (uuc *UserUseCase) OpenCardTwoCode(ctx context.Context, req *pb.OpenCardTwo
 		return &pb.OpenCardTwoCodeReply{Status: "用户不存在"}, nil
 	}
 
-	if 3 != user.CardTwo {
+	if 2 != user.CardTwo {
 		return &pb.OpenCardTwoCodeReply{Status: "未提交绑定，稍后重试"}, nil
 	}
 
@@ -1427,6 +1427,75 @@ func (uuc *UserUseCase) OpenCardTwoCode(ctx context.Context, req *pb.OpenCardTwo
 	}
 
 	return &pb.OpenCardTwoCodeReply{Status: "ok"}, nil
+}
+
+func (uuc *UserUseCase) OpenCardTwoCodeTest(ctx context.Context, req *pb.OpenCardTwoCodeTestRequest, userId uint64) (*pb.OpenCardTwoCodeTestReply, error) {
+	lockAmount.Lock()
+	defer lockAmount.Unlock()
+
+	var (
+		user *User
+		err  error
+	)
+
+	user, err = uuc.repo.GetUserByAddress(req.Address)
+	if nil == user || nil != err {
+		return &pb.OpenCardTwoCodeTestReply{Status: "用户不存在"}, nil
+	}
+
+	if 2 != user.CardTwo {
+		return &pb.OpenCardTwoCodeTestReply{Status: "未提交绑定，稍后重试"}, nil
+	}
+
+	if 5 > len(user.CardIdTwo) {
+		return &pb.OpenCardTwoCodeTestReply{Status: "未提交绑定，稍后重试"}, nil
+	}
+
+	if 2 > len(req.Code) {
+		return &pb.OpenCardTwoCodeTestReply{Status: "输入激活码"}, nil
+	}
+
+	if 5 > len(req.Pin) {
+		return &pb.OpenCardTwoCodeTestReply{Status: "输入pin"}, nil
+	}
+
+	var (
+		userCardIdTwo uint64
+	)
+	userCardIdTwo, err = strconv.ParseUint(user.CardIdTwo, 10, 64)
+	if nil != err {
+		return &pb.OpenCardTwoCodeTestReply{Status: "获取产品信息错误"}, nil
+	}
+
+	var (
+		activatePhysicalCardr *ActivateCardResponse
+	)
+
+	activatePhysicalCardr, err = ActivatePhysicalCardRequest(userCardIdTwo, req.Code, req.Pin)
+	if nil == activatePhysicalCardr || err != nil {
+		fmt.Println("激活实体卡失败:", user, activatePhysicalCardr, req.Code, req.Pin, err)
+		return &pb.OpenCardTwoCodeTestReply{Status: "激活实体卡失败"}, nil
+	}
+
+	if "ACTIVATING" == activatePhysicalCardr.Data.CardStatus || "ACTIVE" == activatePhysicalCardr.Data.CardStatus {
+		if err = uuc.tx.ExecTx(ctx, func(ctx context.Context) error { // 事务
+			err = uuc.repo.UpdateCardTwoActive(ctx, userId)
+			if nil != err {
+				return err
+			}
+
+			return nil
+		}); nil != err {
+			fmt.Println(err, "开卡写入mysql错误", user)
+			return &pb.OpenCardTwoCodeTestReply{
+				Status: "开卡错误，联系管理员",
+			}, nil
+		}
+	} else {
+		return &pb.OpenCardTwoCodeTestReply{Status: "激活实体卡失败"}, nil
+	}
+
+	return &pb.OpenCardTwoCodeTestReply{Status: "ok"}, nil
 }
 
 func (uuc *UserUseCase) AmountToCard(ctx context.Context, req *pb.AmountToCardRequest, userId uint64) (*pb.AmountToCardReply, error) {
