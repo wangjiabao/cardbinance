@@ -234,7 +234,7 @@ func (uuc *UserUseCase) GetUserById(userId uint64) (*pb.GetUserReply, error) {
 		}
 	}
 
-	if "no" == user.CardIdTwo {
+	if "no" != user.CardIdTwo {
 		var (
 			resCard *CardInfoResponse
 		)
