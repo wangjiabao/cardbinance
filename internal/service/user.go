@@ -281,7 +281,7 @@ func (u *UserService) SetVip(ctx context.Context, req *pb.SetVipRequest) (*pb.Se
 		user *biz.User
 	)
 	user, err = u.uuc.GetUserDataById(userId)
-	if nil != err {
+	if nil == user || nil != err {
 		return &pb.SetVipReply{
 			Status: "无效TOKEN",
 		}, nil
@@ -351,7 +351,7 @@ func (u *UserService) OpenCard(ctx context.Context, req *pb.OpenCardRequest) (*p
 		user *biz.User
 	)
 	user, err = u.uuc.GetUserDataById(userId)
-	if nil != err {
+	if nil == user || nil != err {
 		return &pb.OpenCardReply{
 			Status: "无效TOKEN",
 		}, nil
@@ -421,7 +421,7 @@ func (u *UserService) OpenCardTwo(ctx context.Context, req *pb.OpenCardRequest) 
 		user *biz.User
 	)
 	user, err = u.uuc.GetUserDataById(userId)
-	if nil != err {
+	if nil == user || nil != err {
 		return &pb.OpenCardReply{
 			Status: "无效TOKEN",
 		}, nil
@@ -491,7 +491,7 @@ func (u *UserService) OpenCardTwoCode(ctx context.Context, req *pb.OpenCardTwoCo
 		user *biz.User
 	)
 	user, err = u.uuc.GetUserDataById(userId)
-	if nil != err {
+	if nil == user || nil != err {
 		return &pb.OpenCardTwoCodeReply{
 			Status: "无效TOKEN",
 		}, nil
@@ -565,7 +565,7 @@ func (u *UserService) AmountToCard(ctx context.Context, req *pb.AmountToCardRequ
 		user *biz.User
 	)
 	user, err = u.uuc.GetUserDataById(userId)
-	if nil != err {
+	if nil == user || nil != err {
 		return &pb.AmountToCardReply{
 			Status: "无效TOKEN",
 		}, nil
@@ -635,7 +635,7 @@ func (u *UserService) AmountTo(ctx context.Context, req *pb.AmountToRequest) (*p
 		user *biz.User
 	)
 	user, err = u.uuc.GetUserDataById(userId)
-	if nil != err {
+	if nil == user || nil != err {
 		return &pb.AmountToReply{
 			Status: "无效TOKEN",
 		}, nil
@@ -705,7 +705,7 @@ func (u *UserService) Withdraw(ctx context.Context, req *pb.WithdrawRequest) (*p
 		user *biz.User
 	)
 	user, err = u.uuc.GetUserDataById(userId)
-	if nil != err {
+	if nil == user || nil != err {
 		return &pb.WithdrawReply{
 			Status: "无效TOKEN",
 		}, nil
@@ -775,7 +775,7 @@ func (u *UserService) LookCard(ctx context.Context, req *pb.LookCardRequest) (*p
 		user *biz.User
 	)
 	user, err = u.uuc.GetUserDataById(userId)
-	if nil != err {
+	if nil == user || nil != err {
 		return &pb.LookCardReply{
 			Status: "无效TOKEN",
 		}, nil
