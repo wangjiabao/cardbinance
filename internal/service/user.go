@@ -7,10 +7,8 @@ import (
 	"cardbinance/internal/pkg/middleware/auth"
 	"context"
 	"github.com/ethereum/go-ethereum/accounts"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/go-kratos/kratos/v2/log"
 	"github.com/go-kratos/kratos/v2/middleware/auth/jwt"
 	jwt2 "github.com/golang-jwt/jwt/v5"
@@ -829,21 +827,21 @@ func addressCheck(addressParam string) (bool, error) {
 		return false, nil
 	}
 
-	client, err := ethclient.Dial("https://bsc-dataseed4.binance.org/")
-	if err != nil {
-		return false, err
-	}
-
-	// a random user account address
-	address := common.HexToAddress(addressParam)
-	bytecode, err := client.CodeAt(context.Background(), address, nil) // nil is latest block
-	if err != nil {
-		return false, err
-	}
-
-	if len(bytecode) > 0 {
-		return false, nil
-	}
+	//client, err := ethclient.Dial("https://bsc-dataseed4.binance.org/")
+	//if err != nil {
+	//	return false, err
+	//}
+	//
+	//// a random user account address
+	//address := common.HexToAddress(addressParam)
+	//bytecode, err := client.CodeAt(context.Background(), address, nil) // nil is latest block
+	//if err != nil {
+	//	return false, err
+	//}
+	//
+	//if len(bytecode) > 0 {
+	//	return false, nil
+	//}
 
 	return true, nil
 }
